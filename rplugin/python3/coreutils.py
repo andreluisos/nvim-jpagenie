@@ -1,9 +1,10 @@
-from pynvim import plugin
-from typing import Literal
 from glob import glob
 from pathlib import Path
-from tree_sitter import Language, Parser, Node
+from typing import Literal
+
 import tree_sitter_java as tsjava
+from pynvim import plugin, command
+from tree_sitter import Language, Node, Parser
 
 
 @plugin
@@ -58,6 +59,7 @@ class Util(object):
         self.nvim.command("echo 'Root not found'")
         return None
 
+    @command("Test", nargs=0)
     def get_spring_main_class_path(self) -> str | None:
         root_dir = self.get_spring_project_root_path()
         if root_dir is None:
