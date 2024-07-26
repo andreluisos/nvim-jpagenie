@@ -1,25 +1,34 @@
-from glob import glob
 from pathlib import Path
 from typing import Literal
 
 import tree_sitter_java as tsjava
-from pynvim import plugin, command
+from pynvim import plugin
 from tree_sitter import Language, Node, Parser
 
 
 @plugin
 class Util(object):
+    JAVA_LANGUAGE = Language(tsjava.language())
+    PARSER = Parser(JAVA_LANGUAGE)
+    ROOT_FILES = [
+        "pom.xml",
+        "build.gradle",
+        "build.gradle.kts",
+        "settings.gradle.kts",
+        "settings.gradle",
+    ]
+
     def __init__(self, nvim):
         self.nvim = nvim
-        self.java_language = Language(tsjava.language())
-        self.parser = Parser(self.java_language)
-        self.root_files = [
-            "pom.xml",
-            "build.gradle",
-            "build.gradle.kts",
-            "settings.gradle.kts",
-            "settings.gradle",
-        ]
+        self.spring_project_root_path: str | None = self.get_spring_project_root_path()
+        self.spring_main_class_path: str | None = self.get_spring_main_class_path()
+        self.spring_root_package_path: str | None = self.get_spring_root_package_path()
+        if (
+            self.spring_root_package_path is None
+            or self.spring_project_root_path is None
+            or self.spring_main_class_path is None
+        ):
+            self.nvim.command("echo 'Make sure this is a Spring Boot project.'")
 
     def is_spring_main_application_class(
         self, node: Node, code: str, in_class_declaration: bool = False
@@ -38,39 +47,39 @@ class Util(object):
                     return True
         return False
 
-    def get_root_package_path(self) -> str | None:
-        full_path = self.get_spring_main_class_path()
+    def get_spring_project_root_path(self) -> str | None:
+        root_dir = Path(self.nvim.funcs.getcwd()).resolve()
+        for file in root_dir.iterdir():
+            if file.name in self.ROOT_FILES:
+                self.nvim.command(f"echo '{root_dir.as_posix()}'")
+                return root_dir.as_posix()
+        self.nvim.command(
+            "echo 'Root not found. Make sure this is a Spring Boot project.'"
+        )
+
+    def get_spring_root_package_path(self) -> str | None:
+        full_path = self.spring_main_class_path
         if full_path is None:
             return None
         java_index = Path(full_path).parts.index("java")
         package_path = ".".join(Path(full_path).parts[java_index + 1 : -1])
+        self.nvim.command(f"echo '{package_path}'")
         return package_path
 
-    def get_spring_project_root_path(self) -> str | None:
-        root_dir = Path(self.nvim.funcs.getcwd()).resolve()
-        self.nvim.command(f"echo '{root_dir}'")
-        root_found = False
-        for file in glob(root_dir.joinpath("*").as_posix()):
-            if Path(file).name in self.root_files:
-                root_found = True
-                break
-        if root_found:
-            return str(root_dir)
-        self.nvim.command("echo 'Root not found'")
-        return None
-
     def get_spring_main_class_path(self) -> str | None:
-        root_dir = self.get_spring_project_root_path()
+        root_dir = self.spring_project_root_path
         if root_dir is None:
-            return None
-        for p in Path(root_dir).rglob("*.java"):
-            root = self.parser.parse(bytes(p.read_text(), "utf-8"))
-            main_class_found = self.is_spring_main_application_class(
-                root.root_node, p.read_text()
-            )
-            if main_class_found:
-                return str(p.resolve())  # Ensure absolute path
-        return None
+            return
+        root_path = Path(root_dir)
+        for p in root_path.rglob("*.java"):
+            file_content = p.read_text(encoding="utf-8")
+            root = self.PARSER.parse(file_content.encode("utf-8"))
+            if self.is_spring_main_application_class(root.root_node, file_content):
+                self.nvim.command(f"echo '{p.resolve().as_posix()}'")
+                return p.resolve().as_posix()
+        self.nvim.command(
+            "echo 'Main class not found. Make sure this is a Spring Boot project.'"
+        )
 
     def create_java_file(
         self,
