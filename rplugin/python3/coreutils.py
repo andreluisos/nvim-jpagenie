@@ -2,11 +2,9 @@ from pathlib import Path
 
 import tree_sitter_java as tsjava
 from tree_sitter import Language, Node, Parser
-from pynvim import plugin
 
 
-@plugin
-class Util(object):
+class Util:
     JAVA_LANGUAGE = Language(tsjava.language())
     PARSER = Parser(JAVA_LANGUAGE)
     ROOT_FILES = [
@@ -17,8 +15,8 @@ class Util(object):
         "settings.gradle",
     ]
 
-    def __init__(self, nvim):
-        self.nvim = nvim
+    def __init__(self, cwd: Path):
+        self.cwd: Path = cwd
         self.spring_project_root_path: str | None = self.get_spring_project_root_path()
         self.spring_main_class_path: str | None = self.get_spring_main_class_path()
         self.spring_root_package_path: str | None = self.get_spring_root_package_path()
@@ -41,7 +39,7 @@ class Util(object):
         return False
 
     def get_spring_project_root_path(self) -> str | None:
-        root_dir = Path(self.nvim.funcs.getcwd()).resolve()
+        root_dir = Path(self.cwd)
         for file in root_dir.iterdir():
             if file.name in self.ROOT_FILES:
                 return root_dir.as_posix()
