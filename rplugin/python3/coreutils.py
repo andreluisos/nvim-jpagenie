@@ -59,7 +59,6 @@ class Util(object):
         self.nvim.command("echo 'Root not found'")
         return None
 
-    @command("Test", nargs=0)
     def get_spring_main_class_path(self) -> str | None:
         root_dir = self.get_spring_project_root_path()
         if root_dir is None:
