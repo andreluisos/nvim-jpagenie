@@ -21,21 +21,31 @@ class Util:
         self.spring_main_class_path: str | None = self.get_spring_main_class_path()
         self.spring_root_package_path: str | None = self.get_spring_root_package_path()
 
-    def is_spring_main_application_class(
-        self, node: Node, code: str, in_class_declaration: bool = False
+    def is_class_annotation_present(
+        self,
+        node: Node,
+        code: bytes,
+        annotation: str,
+        in_class_declaration: bool = False,
     ) -> bool:
-        if in_class_declaration and node.type == "marker_annotation":
-            if code[node.start_byte : node.end_byte] == "@SpringBootApplication":
+        if node.type == "marker_annotation":
+            annotation_text = code[node.start_byte : node.end_byte].decode("utf-8")
+            if annotation_text == annotation:
                 return True
+        elif node.type == "class_declaration":
+            in_class_declaration = True
         for child in node.children:
-            if child.type == "class_declaration":
-                if self.is_spring_main_application_class(child, code, True):
-                    return True
-            else:
-                if self.is_spring_main_application_class(
-                    child, code, in_class_declaration
-                ):
-                    return True
+            if self.is_class_annotation_present(
+                child, code, annotation, in_class_declaration
+            ):
+                return True
+        return False
+
+    def is_buffer_jpa_entity(self, buffer: Path) -> bool:
+        file_content = buffer.read_text(encoding="utf-8").encode("utf-8")
+        root = self.PARSER.parse(file_content)
+        if self.is_class_annotation_present(root.root_node, file_content, "@Entity"):
+            return True
         return False
 
     def get_spring_project_root_path(self) -> str | None:
@@ -58,7 +68,9 @@ class Util:
             return
         root_path = Path(root_dir)
         for p in root_path.rglob("*.java"):
-            file_content = p.read_text(encoding="utf-8")
-            root = self.PARSER.parse(file_content.encode("utf-8"))
-            if self.is_spring_main_application_class(root.root_node, file_content):
+            file_content = p.read_text(encoding="utf-8").encode("utf-8")
+            root = self.PARSER.parse(file_content)
+            if self.is_class_annotation_present(
+                root.root_node, file_content, "@SpringBootApplication"
+            ):
                 return p.resolve().as_posix()
