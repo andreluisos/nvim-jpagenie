@@ -40,7 +40,10 @@ class Util:
             debug(f"query: {query}")
         _query = self.JAVA_LANGUAGE.query(query)
         node = self.PARSER.parse(buffer).root_node
-        return _query.captures(node)
+        results = _query.captures(node)
+        if debugger:
+            debug(f"Returned {len(results)} entries.")
+        return results
 
     def is_search_term_in_query_results(
         self,
