@@ -2,6 +2,9 @@ from pathlib import Path
 
 import tree_sitter_java as tsjava
 from tree_sitter import Language, Node, Parser
+from logging import basicConfig, debug, DEBUG
+
+basicConfig(filename="coreutils.log", level=DEBUG)
 
 
 class Util:
@@ -20,6 +23,44 @@ class Util:
         self.spring_project_root_path: str | None = self.get_spring_project_root_path()
         self.spring_main_class_path: str | None = self.get_spring_main_class_path()
         self.spring_root_package_path: str | None = self.get_spring_root_package_path()
+
+    def get_node_text(self, node: Node, buffer: bytes, debugger: bool = False) -> str:
+        if debugger:
+            debug(f"method: {self.get_node_text.__name__}")
+        node_text = buffer[node.start_byte : node.end_byte].decode("utf-8")
+        if debugger:
+            debug(f"node text: {node_text}")
+        return node_text
+
+    def query_buffer(
+        self, buffer: bytes, query: str, debugger: bool = False
+    ) -> list[tuple[Node, str]]:
+        if debugger:
+            debug(f"method: {self.query_buffer.__name__}")
+            debug(f"query: {query}")
+        _query = self.JAVA_LANGUAGE.query(query)
+        node = self.PARSER.parse(buffer).root_node
+        return _query.captures(node)
+
+    def is_search_term_in_query_results(
+        self,
+        buffer: bytes,
+        query_results: list[tuple[Node, str]],
+        search_term: str,
+        debugger: bool = False,
+    ) -> bool:
+        if debugger:
+            debug(f"method: {self.is_search_term_in_query_results.__name__}")
+            debug(f"search term: {search_term}")
+        for result in query_results:
+            node_text = self.get_node_text(result[0], buffer)
+            if node_text == search_term:
+                if debugger:
+                    debug("Search term is present.")
+                return True
+        if debugger:
+            debug("Search term is not present.")
+        return False
 
     def is_class_annotation_present(
         self,
