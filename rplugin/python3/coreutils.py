@@ -1,5 +1,6 @@
 from pathlib import Path
 
+from pynvim.api.nvim import walk
 import tree_sitter_java as tsjava
 from tree_sitter import Language, Node, Parser
 from logging import basicConfig, debug, DEBUG
@@ -52,16 +53,14 @@ class Util:
         if debugger:
             debug(f"method: {self.get_node_from_path.__name__}")
             debug(f"buffer path: {str(buffer_path)}")
-        buffer = self.get_buffer_from_path(buffer_path)
+        buffer = self.get_buffer_from_path(buffer_path, debugger=debugger)
         return self.PARSER.parse(buffer).root_node
 
-    def get_node_text(self, node: Node, buffer: bytes, debugger: bool = False) -> str:
+    def get_node_text(self, node: Node, debugger: bool = False) -> str:
         """This method will get the text from a tree-sitter Node object.
-        The node and buffer must be related to the same file.
 
         Args:
             node: the node used to get text coordinates
-            buffer: the bytes used to get the text from
             debugger: whether if logging is enabled for the method
 
         Returns:
@@ -69,7 +68,7 @@ class Util:
         """
         if debugger:
             debug(f"method: {self.get_node_text.__name__}")
-        node_text = buffer[node.start_byte : node.end_byte].decode("utf-8")
+        node_text = node.text.decode("utf-8") if node.text is not None else ""
         if debugger:
             debug(f"node text: {node_text}")
         return node_text
@@ -98,7 +97,6 @@ class Util:
 
     def query_results_has_term(
         self,
-        buffer_path: Path,
         query_results: list[tuple[Node, str]],
         search_term: str,
         debugger: bool = False,
@@ -114,15 +112,26 @@ class Util:
         Returns:
             True if the term was found in the query results.
         """
+
+        def iterate_nodes(node: Node):
+            """Recursively iterate over the node and its children to search for the term."""
+            node_text = self.get_node_text(node, debugger=debugger)
+            if node_text == search_term:
+                if debugger:
+                    debug(
+                        f"Search term '{search_term}' found in node with text '{node_text}'."
+                    )
+                return True
+            for child in node.children:
+                if iterate_nodes(child):
+                    return True
+            return False
+
         if debugger:
             debug(f"method: {self.query_results_has_term.__name__}")
             debug(f"search term: {search_term}")
-        buffer = self.get_buffer_from_path(buffer_path)
         for result in query_results:
-            node_text = self.get_node_text(result[0], buffer)
-            if node_text == search_term:
-                if debugger:
-                    debug("Search term is present.")
+            if iterate_nodes(result[0]):
                 return True
         if debugger:
             debug("Search term is not present.")
@@ -145,7 +154,7 @@ class Util:
             debug(f"method: {self.buffer_has_class_annotation.__name__}")
             debug(f"buffer path: {buffer_path}")
             debug(f"class annotation: {class_annotation}")
-        node = self.get_node_from_path(buffer_path)
+        node = self.get_node_from_path(buffer_path, debugger=debugger)
         query = """
         (class_declaration
             (modifiers
@@ -156,7 +165,7 @@ class Util:
         ) 
         """
         results = self.query_node(node, query)
-        if self.query_results_has_term(buffer_path, results, class_annotation):
+        if self.query_results_has_term(results, class_annotation, debugger=debugger):
             debug("Class annotation found")
             return True
         debug("Class annotation not found")
@@ -171,15 +180,17 @@ class Util:
         Returns:
             Absolute path of the project root directory.
         """
+        cwd = Path(self.cwd)
         if debugger:
             debug(f"method: {self.get_spring_project_root_path.__name__}")
-        root_path = Path(self.cwd)
-        for file in root_path.iterdir():
+            debug(f"cwd: {cwd}")
+        for file in cwd.iterdir():
             if file.name in self.ROOT_FILES:
                 if debugger:
-                    debug(f"root path: {root_path}")
-                return str(root_path.resolve())
-        debug("Root path not found.")
+                    debug(f"Root path found: {cwd}")
+                return str(cwd.resolve())
+        if debugger:
+            debug("Root path not found.")
 
     def get_spring_root_package_path(self, debugger: bool = False) -> str | None:
         """This method builds the root package path, generally used when creating classes.
@@ -213,13 +224,29 @@ class Util:
         if debugger:
             debug(f"method: {self.get_spring_main_class_path.__name__}")
         root_dir = self.spring_project_root_path
+        query = """
+        (class_declaration
+            (modifiers
+                (marker_annotation
+                name: (identifier) @annotation_name
+                )
+            )
+        ) 
+        """
         if root_dir is None:
             return
         root_path = Path(root_dir)
         for p in root_path.rglob("*.java"):
-            if self.buffer_has_class_annotation(p, "@SpringBootApplication"):
-                main_class_path = str(p.resolve())
+            if debugger:
+                debug(f"Checking file: {p.resolve()}")
+            node = self.get_node_from_path(p)
+            results = self.query_node(node, query)
+            if self.query_results_has_term(
+                results, "SpringBootApplication", debugger=debugger
+            ):
                 if debugger:
-                    debug(f"main class path: {main_class_path}")
-                return main_class_path
-        debug("Main class path not found.")
+                    debug("Main class path found.")
+                return str(p.resolve())
+        if debugger:
+            debug("Main class path not found.")
+        return
