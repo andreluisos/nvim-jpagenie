@@ -1,11 +1,10 @@
 from pathlib import Path
 
-from pynvim.api.nvim import walk
 import tree_sitter_java as tsjava
 from tree_sitter import Language, Node, Parser
 from logging import basicConfig, debug, DEBUG
 
-basicConfig(filename="coreutils.log", level=DEBUG)
+# basicConfig(filename="coreutils.log", level=DEBUG)
 
 
 class Util:
@@ -135,6 +134,7 @@ class Util:
                 return True
         if debugger:
             debug("Search term is not present.")
+        return False
 
     def find_type_in_node(
         self,
