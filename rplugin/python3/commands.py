@@ -1,60 +1,40 @@
 from pathlib import Path
+from typing import Literal
+from pynvim.api.nvim import Nvim
+from pynvim.plugin import command, plugin
 
-from pynvim import command, plugin
+from echomsg import EchoMsg
 
+from createjavafile import CreateJavaFile
 from coreutils import Util
 
 
 @plugin
 class Command(object):
-    def __init__(self, nvim):
+    def __init__(self, nvim: Nvim) -> None:
         self.nvim = nvim
         self.cwd = Path(self.nvim.funcs.getcwd()).resolve()
         self.util = Util(self.cwd)
+        self.echomsg = EchoMsg(nvim)
+        self.java_file = CreateJavaFile(self.nvim, self.echomsg)
 
     @command("CreateJavaFile", nargs="*")
     def create_java_file(self, args) -> None:
         if len(args) != 3:
-            self.nvim.command("echo 'Invalid number of arguments. Expected 3.'")
+            self.echomsg.print("Invalid number of arguments. Expected 3.")
             return
         package_path: str = args[0]
-        name: str = args[1]
-        type: str = args[2]
-        if type not in ["class", "interface", "record", "enum", "annotation"]:
-            self.nvim.command("echo 'Invalid file type'")
-            return
+        file_name: str = args[1]
+        file_type: Literal["class", "interface", "record", "enum", "annotation"] = args[
+            2
+        ]
         main_class_path = self.util.get_spring_main_class_path()
         if main_class_path is None:
-            self.nvim.command("echo 'Spring main class path not found'")
+            self.echomsg.print("Spring main class path not found")
             return
-        boiler_plate: str = ""
-        if type in ["class", "interface", "enum"]:
-            boiler_plate = (
-                f"""package {package_path};\n\npublic {type} {name} {{\n\n}}"""
-            )
-        elif type == "record":
-            boiler_plate = (
-                f"""package {package_path};\n\npublic record {name}(\n\n) {{}}"""
-            )
-        else:
-            boiler_plate = (
-                f"""package {package_path};\n\npublic @interface {name} {{\n\n}}"""
-            )
-        base_path = Path(main_class_path).parent
-        relative_path = Path(package_path.replace(".", "/"))
-        index_to_replace: int
-        try:
-            index_to_replace = base_path.parts.index("main") + 1
-        except ValueError:
-            self.nvim.command("echo 'Unable to parse root directory.")
-            return
-        file_path = (
-            Path(*base_path.parts[:index_to_replace]) / relative_path / f"{name}.java"
+        self.java_file.create_java_file(
+            main_class_path=main_class_path,
+            package_path=package_path,
+            file_name=file_name,
+            file_type=file_type,
         )
-        if not file_path.exists():
-            file_path.parent.mkdir(parents=True, exist_ok=True)
-            with open(file_path, "w") as java_file:
-                java_file.write(boiler_plate)
-                self.nvim.command(f"echo 'File {file_path} created'")
-        else:
-            self.nvim.command(f"echo 'File {file_path} already exists'")

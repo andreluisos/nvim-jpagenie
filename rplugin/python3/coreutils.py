@@ -70,7 +70,7 @@ class Util:
             debug(f"method: {self.get_node_text.__name__}")
         node_text = node.text.decode("utf-8") if node.text is not None else ""
         if debugger:
-            debug(f"node text: {node_text}")
+            debug(f"Returned node text: {node_text}")
         return node_text
 
     def query_node(
@@ -135,41 +135,30 @@ class Util:
                 return True
         if debugger:
             debug("Search term is not present.")
-        return False
 
-    def buffer_has_class_annotation(
-        self, buffer_path: Path, class_annotation: str, debugger: bool = False
-    ) -> bool:
-        """THis method will check if a buffer is a class and if it has an specific annotation.
+    def find_type_in_node(
+        self,
+        node: Node,
+        type: str,
+        debugger: bool = False,
+    ) -> Node | None:
+        def iterate_nodes(node: Node):
+            debug(f"type: {node.type}")
+            if node.type == type:
+                if debugger:
+                    debug(f"Node found with type {type}.")
+                return node
+            for child in node.children:
+                iterate_nodes(child)
+            return False
 
-        Args:
-            buffer_path: the buffer path
-            class_annotation: the class annotation object of the search
-            debugger: whether if logging is enabled for the method
-
-        Returns:
-            True if present.
-        """
         if debugger:
-            debug(f"method: {self.buffer_has_class_annotation.__name__}")
-            debug(f"buffer path: {buffer_path}")
-            debug(f"class annotation: {class_annotation}")
-        node = self.get_node_from_path(buffer_path, debugger=debugger)
-        query = """
-        (class_declaration
-            (modifiers
-                (marker_annotation
-                name: (identifier) @annotation_name
-                )
-            )
-        ) 
-        """
-        results = self.query_node(node, query)
-        if self.query_results_has_term(results, class_annotation, debugger=debugger):
-            debug("Class annotation found")
-            return True
-        debug("Class annotation not found")
-        return False
+            debug(f"type: {type}")
+            debug(f"method: {self.find_type_in_node.__name__}")
+        iterate_nodes(node)
+        if debugger:
+            debug("No node found with this type.")
+        return
 
     def get_spring_project_root_path(self, debugger: bool = False) -> str | None:
         """This method will check for the ROOT_FILES in every directory, starting from
