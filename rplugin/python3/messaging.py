@@ -6,14 +6,22 @@ from inspect import stack
 class Messaging:
     def __init__(self, nvim):
         self.logging = logging
-        self.logging.basicConfig(filename="logging.log", level=logging.DEBUG)
+        self.logging.basicConfig(
+            filename="logging.log",
+            level=logging.DEBUG,
+            format="%(asctime)s - %(name)s - %(levelname)s - %(message)s",
+            datefmt="%Y-%m-%d %H:%M:%S",
+        )
         self.nvim = nvim
 
     def print(self, msg: str) -> None:
         self.nvim.command(f"echomsg '{msg}'")
 
     def log(
-        self, msg: str, level: Literal["debug", "info", "critical", "error", "warn"]
+        self,
+        msg: str,
+        level: Literal["debug", "info", "critical", "error", "warn"],
+        send_msg: bool = False,
     ) -> None:
         level_int: int
         match level:
@@ -35,6 +43,8 @@ class Messaging:
                 break
             if i == 0:
                 continue
-            call_stack.append(class_name)
             call_stack.append(method_name)
-        self.logging.log(level_int, f"{':'.join(call_stack)}:{msg}")
+            call_stack.append(class_name)
+        self.logging.log(level_int, f"{':'.join(reversed(call_stack))}:{msg}")
+        if send_msg:
+            self.print(msg)
