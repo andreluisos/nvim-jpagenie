@@ -9,7 +9,7 @@ class Messaging:
         self.logging.basicConfig(
             filename="logging.log",
             level=logging.DEBUG,
-            format="%(asctime)s - %(name)s - %(levelname)s - %(message)s",
+            format="[%(asctime)s - %(name)s - %(levelname)s] - %(message)s",
             datefmt="%Y-%m-%d %H:%M:%S",
         )
         self.nvim = nvim
@@ -45,6 +45,6 @@ class Messaging:
                 continue
             call_stack.append(method_name)
             call_stack.append(class_name)
-        self.logging.log(level_int, f"{':'.join(reversed(call_stack))}:{msg}")
+        self.logging.log(level_int, f"[{':'.join(reversed(call_stack))}] - {msg}")
         if send_msg:
             self.print(msg)
