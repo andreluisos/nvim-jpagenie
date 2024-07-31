@@ -2,9 +2,7 @@ from pathlib import Path
 
 import tree_sitter_java as tsjava
 from tree_sitter import Language, Node, Parser
-from logging import basicConfig, debug, DEBUG
-
-# basicConfig(filename="coreutils.log", level=DEBUG)
+from messaging import Messaging
 
 
 class Util:
@@ -18,80 +16,39 @@ class Util:
         "settings.gradle",
     ]
 
-    def __init__(self, cwd: Path):
+    def __init__(self, cwd: Path, messaging: Messaging):
         self.cwd: Path = cwd
+        self.messaging = messaging
         self.spring_project_root_path: str | None = self.get_spring_project_root_path()
         self.spring_main_class_path: str | None = self.get_spring_main_class_path()
         self.spring_root_package_path: str | None = self.get_spring_root_package_path()
 
     def get_buffer_from_path(self, buffer_path: Path, debugger: bool = False) -> bytes:
-        """This method will get the file content and read it as bytes.
-
-        Args:
-            buffer_path: the buffer path
-            debugger: whether if logging is enabled for the method
-
-        Returns:
-            The content of the file in bytes.
-        """
         if debugger:
-            debug(f"method: {self.get_buffer_from_path.__name__}")
-            debug(f"buffer path: {str(buffer_path)}")
+            self.messaging.log(f"Buffer path: {str(buffer_path)}", "debug")
         return buffer_path.read_text(encoding="utf-8").encode("utf-8")
 
     def get_node_from_path(self, buffer_path: Path, debugger: bool = False) -> Node:
-        """This method will convert the buffer into a tree-sitter Node object.
-
-        Args:
-            buffer_path: the buffer path
-            debugger: whether if logging is enabled for the method
-
-        Returns:
-            A tree-sitter's Node object.
-        """
         if debugger:
-            debug(f"method: {self.get_node_from_path.__name__}")
-            debug(f"buffer path: {str(buffer_path)}")
+            self.messaging.log(f"Buffer path: {str(buffer_path)}", "debug")
         buffer = self.get_buffer_from_path(buffer_path, debugger=debugger)
         return self.PARSER.parse(buffer).root_node
 
     def get_node_text(self, node: Node, debugger: bool = False) -> str:
-        """This method will get the text from a tree-sitter Node object.
-
-        Args:
-            node: the node used to get text coordinates
-            debugger: whether if logging is enabled for the method
-
-        Returns:
-            String containing the text of the node.
-        """
-        if debugger:
-            debug(f"method: {self.get_node_text.__name__}")
         node_text = node.text.decode("utf-8") if node.text is not None else ""
         if debugger:
-            debug(f"Returned node text: {node_text}")
+            self.messaging.log(f"Returned node text: {node_text}", "debug")
         return node_text
 
     def query_node(
         self, node: Node, query: str, debugger: bool = False
     ) -> list[tuple[Node, str]]:
-        """This method will query a tree-sitter Node object and capture the results.
-
-        Args:
-            node: the node the be queried
-            query: the query itself
-            debugger: whether if logging is enabled for the method
-
-        Returns:
-            A list of tuples containing the Node and it's name.
-        """
         if debugger:
-            debug(f"method: {self.query_node.__name__}")
-            debug(f"query: {query}")
+            self.messaging.log(f"Query: {query}", "debug")
         _query = self.JAVA_LANGUAGE.query(query)
         results = _query.captures(node)
         if debugger:
-            debug(f"Returned {len(results)} entries.")
+            self.messaging.log(f"Returned {len(results)} entries.", "debug")
         return results
 
     def query_results_has_term(
@@ -100,25 +57,13 @@ class Util:
         search_term: str,
         debugger: bool = False,
     ) -> bool:
-        """This method will iterate over a tree-sitter Node object query capture and
-        search a specific term.
-        Args:
-            buffer_path: a Path object of the buffer
-            query_results: the list of tuples containing the query results
-            search_term: the search term as string
-            debugger: whether if logging is enabled for the method
-
-        Returns:
-            True if the term was found in the query results.
-        """
-
-        def iterate_nodes(node: Node):
-            """Recursively iterate over the node and its children to search for the term."""
+        def iterate_nodes(node: Node) -> bool:
             node_text = self.get_node_text(node, debugger=debugger)
             if node_text == search_term:
                 if debugger:
-                    debug(
-                        f"Search term '{search_term}' found in node with text '{node_text}'."
+                    self.messaging.log(
+                        f"Search term '{search_term}' found in node with text '{node_text}'.",
+                        "debug",
                     )
                 return True
             for child in node.children:
@@ -127,91 +72,37 @@ class Util:
             return False
 
         if debugger:
-            debug(f"method: {self.query_results_has_term.__name__}")
-            debug(f"search term: {search_term}")
+            self.messaging.log(f"Search term: {search_term}", "debug")
         for result in query_results:
             if iterate_nodes(result[0]):
                 return True
         if debugger:
-            debug("Search term is not present.")
+            self.messaging.log("Search term is not present.", "debug")
         return False
 
-    def find_type_in_node(
-        self,
-        node: Node,
-        type: str,
-        debugger: bool = False,
-    ) -> Node | None:
-        def iterate_nodes(node: Node):
-            debug(f"type: {node.type}")
-            if node.type == type:
-                if debugger:
-                    debug(f"Node found with type {type}.")
-                return node
-            for child in node.children:
-                iterate_nodes(child)
-            return False
-
-        if debugger:
-            debug(f"type: {type}")
-            debug(f"method: {self.find_type_in_node.__name__}")
-        iterate_nodes(node)
-        if debugger:
-            debug("No node found with this type.")
-        return
-
     def get_spring_project_root_path(self, debugger: bool = False) -> str | None:
-        """This method will check for the ROOT_FILES in every directory, starting from
-        the current working directory.
-        Args:
-            debugger: whether if logging is enabled for the method
-
-        Returns:
-            Absolute path of the project root directory.
-        """
         cwd = Path(self.cwd)
         if debugger:
-            debug(f"method: {self.get_spring_project_root_path.__name__}")
-            debug(f"cwd: {cwd}")
+            self.messaging.log(f"cwd: {cwd}", "debug")
         for file in cwd.iterdir():
             if file.name in self.ROOT_FILES:
                 if debugger:
-                    debug(f"Root path found: {cwd}")
+                    self.messaging.log(f"Root path found: {cwd}", "debug")
                 return str(cwd.resolve())
-        if debugger:
-            debug("Root path not found.")
+        self.messaging.log("Root path not found.", "error", send_msg=True)
+        return
 
     def get_spring_root_package_path(self, debugger: bool = False) -> str | None:
-        """This method builds the root package path, generally used when creating classes.
-
-        Args:
-            debugger: whether if logging is enabled for the method
-
-        Returns:
-            The absolute path of the package root directory.
-        """
-        if debugger:
-            debug(f"method: {self.get_spring_root_package_path.__name__}")
         full_path = self.spring_main_class_path
         if full_path is None:
             return None
         main_dir_index = Path(full_path).parts.index("main")
         package_path = ".".join(Path(full_path).parts[main_dir_index + 2 : -1])
         if debugger:
-            debug(f"package path: {package_path}")
+            self.messaging.log(f"Package path: {package_path}", "debug")
         return package_path
 
     def get_spring_main_class_path(self, debugger: bool = False) -> str | None:
-        """This method searches for the class with @SpringBootApplication annotation.
-
-        Args:
-            debugger: whether if logging is enabled for the method
-
-        Returns:
-            The absolute path of the class with @SpringBootApplication annotation.
-        """
-        if debugger:
-            debug(f"method: {self.get_spring_main_class_path.__name__}")
         root_dir = self.spring_project_root_path
         query = """
         (class_declaration
@@ -227,15 +118,14 @@ class Util:
         root_path = Path(root_dir)
         for p in root_path.rglob("*.java"):
             if debugger:
-                debug(f"Checking file: {p.resolve()}")
+                self.messaging.log(f"Checking file: {p.resolve()}", "debug")
             node = self.get_node_from_path(p)
             results = self.query_node(node, query)
             if self.query_results_has_term(
                 results, "SpringBootApplication", debugger=debugger
             ):
                 if debugger:
-                    debug("Main class path found.")
+                    self.messaging.log("Main class path found.", "debug")
                 return str(p.resolve())
-        if debugger:
-            debug("Main class path not found.")
+        self.messaging.log("Main class path not found.", "error", send_msg=True)
         return
