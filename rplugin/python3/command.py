@@ -14,8 +14,8 @@ class Command(object):
     def __init__(self, nvim: Nvim) -> None:
         self.nvim = nvim
         self.cwd = Path(self.nvim.funcs.getcwd()).resolve()
-        self.util = Util(self.cwd)
         self.messaging = Messaging(nvim)
+        self.util = Util(self.cwd, self.messaging)
         self.java_file = CreateJavaFile(self.nvim, self.messaging)
 
     @command("CreateJavaFile", nargs="*")
