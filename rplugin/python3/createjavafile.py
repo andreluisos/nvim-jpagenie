@@ -9,14 +9,9 @@ class CreateJavaFile:
         self.nvim = nvim
         self.messaging = messaging
 
-    def create_java_file(
-        self,
-        main_class_path: str,
-        package_path: str,
-        file_name: str,
-        file_type: Literal["class", "interface", "record", "enum", "annotation"],
-        debugger: bool = False,
-    ) -> None:
+    def get_boiler_plate(
+        self, file_type: str, package_path: str, file_name: str, debugger: bool = False
+    ) -> str:
         boiler_plate: str = ""
         if file_type in ["class", "interface", "enum"]:
             boiler_plate = f"""package {package_path};\n\npublic {file_type} {file_name} {{\n\n}}"""
@@ -28,6 +23,17 @@ class CreateJavaFile:
             boiler_plate = (
                 f"""package {package_path};\n\npublic @interface {file_name} {{\n\n}}"""
             )
+        if debugger:
+            self.messaging.log(f"Boiler plate: {boiler_plate}", "debug")
+        return boiler_plate
+
+    def get_file_path(
+        self,
+        main_class_path: str,
+        package_path: str,
+        file_name: str,
+        debugger: bool = False,
+    ) -> Path:
         base_path = Path(main_class_path).parent
         relative_path = Path(package_path.replace(".", "/"))
         index_to_replace: int
@@ -35,18 +41,33 @@ class CreateJavaFile:
             index_to_replace = base_path.parts.index("main")
         except ValueError:
             self.messaging.log("Unable to parse root directory.", "error")
-            return
+            raise ValueError("Unable to parse root directory")
         file_path = (
             Path(*base_path.parts[: index_to_replace + 2])
             / relative_path
             / f"{file_name}.java"
         )
         if debugger:
-            self.messaging.log(f"Boiler plate: {boiler_plate}", "debug")
             self.messaging.log(f"Base path: {str(base_path)}", "debug")
             self.messaging.log(f"Relative path: {str(relative_path)}", "debug")
             self.messaging.log(f"File path: {str(file_path.parent)}", "debug")
             self.messaging.log(f"Successfully created: {file_path}", "debug")
+        return file_path
+
+    def create_java_file(
+        self,
+        main_class_path: str,
+        package_path: str,
+        file_name: str,
+        file_type: Literal["class", "interface", "record", "enum", "annotation"],
+        debugger: bool = False,
+    ) -> None:
+        boiler_plate = self.get_boiler_plate(
+            file_type, package_path, file_name, debugger
+        )
+        file_path = self.get_file_path(
+            main_class_path, package_path, file_name, debugger
+        )
         if not file_path.exists():
             file_path.parent.mkdir(parents=True, exist_ok=True)
             with open(file_path, "w") as java_file:
