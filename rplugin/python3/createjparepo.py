@@ -124,19 +124,24 @@ class CreateJpaRepository:
                                         == marker_annotation_name
                                     ):
                                         id_annotation_found = True
-                                        self.messaging.log(
-                                            f"Id annotation found: {self.util.get_node_text(c3)}",
-                                            "debug",
-                                        )
+                                        if debugger:
+                                            self.messaging.log(
+                                                f"Id annotation found: {self.util.get_node_text(c3)}",
+                                                "debug",
+                                            )
                 if id_annotation_found:
                     if c1.type == "type_identifier":
                         id_type = self.util.get_node_text(c1)
-                        self.messaging.log(f"Id type found: {id_type}", "debug")
+                        if debugger:
+                            self.messaging.log(f"Id type found: {id_type}", "debug")
                         return id_type
         for child in buffer_node.children:
             result = self.find_id_field_type_identifier(child)
             if result:
                 return result
+        self.messaging.log(
+            "Could not locate the Id field's type.", "error", send_msg=True
+        )
         return None
 
     def create_jpa_repo_file(
