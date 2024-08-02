@@ -7,6 +7,7 @@ from pynvim.plugin import command, plugin
 from createjavafile import CreateJavaFile
 from messaging import Messaging
 from coreutil import Util
+from createjparepo import CreateJpaRepository
 
 
 @plugin
@@ -17,6 +18,7 @@ class Command(object):
         self.messaging = Messaging(nvim)
         self.util = Util(self.cwd, self.messaging)
         self.java_file = CreateJavaFile(self.nvim, self.messaging)
+        self.jpa_repo = CreateJpaRepository(self.nvim, self.util, self.messaging)
 
     @command("CreateJavaFile", nargs="*")
     def create_java_file(self, args) -> None:
@@ -46,3 +48,15 @@ class Command(object):
             file_type=file_type,
             debugger=True,
         )
+
+    @command("CreateJPARepository")
+    def create_jpa_repository(self) -> None:
+        root_path = self.util.spring_project_root_path
+        if root_path is None:
+            self.messaging.log(
+                "Unable to find the Spring root path. Is this a Spring Boot project?",
+                "error",
+                send_msg=True,
+            )
+            return
+        self.jpa_repo.create_jpa_entity_for_buffer(Path(root_path), debugger=True)
