@@ -80,29 +80,81 @@ class Util:
             self.messaging.log("Search term is not present.", "debug")
         return False
 
-    def get_spring_project_root_path(self, debugger: bool = False) -> str | None:
+    def get_node_class_name(self, node: Node, debugger: bool = False) -> str | None:
+        class_name_query = """
+        (class_declaration
+            name: (identifier) @class_name
+            )
+        """
+        results = self.query_node(node, class_name_query)
+        if debugger:
+            self.messaging.log(f"Found {len(results)} entries.", "debug")
+        if len(results) == 1:
+            class_name = self.get_node_text(results[0][0])
+            if debugger:
+                self.messaging.log(f"Class name: {class_name}", "debug")
+            return class_name
+        self.messaging.log("No class name found", "debug")
+        return None
+
+    def get_buffer_package_path(
+        self,
+        buffer_path: Path,
+        debugger: bool = False,
+    ) -> str:
+        parent_path = buffer_path.parent
+        if debugger:
+            self.messaging.log(f"Buffer path: {str(buffer_path)}", "debug")
+        index_to_replace: int
+        try:
+            index_to_replace = parent_path.parts.index("main")
+        except ValueError:
+            self.messaging.log("Unable to split parent path.", "error")
+            raise ValueError("Unable to split parent path")
+        if debugger:
+            self.messaging.log(f"Index to replace: {index_to_replace}", "debug")
+        package_path = str(Path(*parent_path.parts[index_to_replace + 2 :])).replace(
+            "/", "."
+        )
+        if debugger:
+            self.messaging.log(f"Parent path: {str(parent_path)}", "debug")
+            self.messaging.log(f"Package path: {package_path}", "debug")
+        return package_path
+
+    def get_spring_project_root_path(self, debugger: bool = False) -> str:
         cwd = Path(self.cwd)
         if debugger:
-            self.messaging.log(f"cwd: {cwd}", "debug")
-        for file in cwd.iterdir():
-            if file.name in self.ROOT_FILES:
+            self.messaging.log(f"Starting directory: {cwd}", "debug")
+        while cwd != cwd.root:
+            if any((cwd / root_file).exists() for root_file in self.ROOT_FILES):
                 if debugger:
                     self.messaging.log(f"Root path found: {cwd}", "debug")
                 return str(cwd.resolve())
+            cwd = cwd.parent
         self.messaging.log("Root path not found.", "error", send_msg=True)
-        return
+        raise FileNotFoundError("Root path not found.")
 
-    def get_spring_root_package_path(self, debugger: bool = False) -> str | None:
+    def get_spring_root_package_path(self, debugger: bool = False) -> str:
         full_path = self.spring_main_class_path
         if full_path is None:
-            return None
-        main_dir_index = Path(full_path).parts.index("main")
-        package_path = ".".join(Path(full_path).parts[main_dir_index + 2 : -1])
+            self.messaging.log(
+                "Spring main class path is not set.", "error", send_msg=True
+            )
+            raise ValueError("Spring main class path is not set.")
+        path_parts = Path(full_path).parts
+        try:
+            main_dir_index = path_parts.index("main")
+        except ValueError:
+            self.messaging.log(
+                "Could not find 'main' in the path.", "error", send_msg=True
+            )
+            raise ValueError("Could not find 'main' in the path.")
+        package_path = ".".join(path_parts[main_dir_index + 2 : -1])
         if debugger:
             self.messaging.log(f"Package path: {package_path}", "debug")
         return package_path
 
-    def get_spring_main_class_path(self, debugger: bool = False) -> str | None:
+    def get_spring_main_class_path(self, debugger: bool = False) -> str:
         root_dir = self.spring_project_root_path
         query = """
         (class_declaration
@@ -114,7 +166,10 @@ class Util:
         ) 
         """
         if root_dir is None:
-            return
+            self.messaging.log(
+                "Spring project root path is not set.", "error", send_msg=True
+            )
+            raise ValueError("Spring project root path is not set.")
         root_path = Path(root_dir)
         for p in root_path.rglob("*.java"):
             if debugger:
@@ -128,4 +183,4 @@ class Util:
                     self.messaging.log("Main class path found.", "debug")
                 return str(p.resolve())
         self.messaging.log("Main class path not found.", "error", send_msg=True)
-        return
+        raise FileNotFoundError("Main class path not found.")
