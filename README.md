@@ -10,6 +10,6 @@ I'll be slowly developing it. So, feel free to contribute.
 TODO:
 - [ ] Create attribute for enties
 - [ ] Create relationship between entities
-- [ ] Create JPA repository for an entity
-- [ ] Create class/enum/interface/annotation/record
+- [x] Create JPA repository for an entity (still need UI)
+- [x] Create class/enum/interface/annotation/record (still need UI)
 - [ ] Create DTO for an entity 
