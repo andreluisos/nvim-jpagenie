@@ -208,6 +208,7 @@ class CreateJpaRepository:
                 )
                 return
             if not self.buffer_has_id_field(superclass_node, debugger=debugger):
+                # TODO: Keep checking for superclasses?
                 self.messaging.log(
                     "Unable to find the Id field on the superclass.",
                     "error",
