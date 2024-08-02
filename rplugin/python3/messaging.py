@@ -45,6 +45,6 @@ class Messaging:
                 continue
             call_stack.append(method_name)
             call_stack.append(class_name)
-        self.logging.log(level_int, f"[{':'.join(reversed(call_stack))}] - {msg}")
+        self.logging.log(level_int, f"[{':'.join(reversed(call_stack))}]:\n{msg}")
         if send_msg:
             self.print(msg)
