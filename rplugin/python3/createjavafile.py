@@ -72,8 +72,9 @@ class CreateJavaFile:
             file_path.parent.mkdir(parents=True, exist_ok=True)
             with open(file_path, "w") as java_file:
                 java_file.write(boiler_plate)
-                self.nvim.command(f"edit {file_path}")
         else:
             self.messaging.log(
                 f"Failed to create file {file_path} because it already exists", "error"
             )
+            return
+        self.nvim.command(f"edit {file_path}")

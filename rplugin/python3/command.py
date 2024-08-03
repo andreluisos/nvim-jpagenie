@@ -6,7 +6,8 @@ from pynvim.plugin import command, plugin
 
 from createjavafile import CreateJavaFile
 from messaging import Messaging
-from coreutil import Util
+from pathutil import PathUtil
+from tsutil import TreesitterUtil
 from createjparepo import CreateJpaRepository
 
 
@@ -16,9 +17,12 @@ class Command(object):
         self.nvim = nvim
         self.cwd = Path(self.nvim.funcs.getcwd()).resolve()
         self.messaging = Messaging(nvim)
-        self.util = Util(self.cwd, self.messaging)
+        self.tsutil = TreesitterUtil(self.cwd, self.messaging)
+        self.pathutil = PathUtil(self.cwd, self.tsutil, self.messaging)
         self.java_file = CreateJavaFile(self.nvim, self.messaging)
-        self.jpa_repo = CreateJpaRepository(self.nvim, self.util, self.messaging)
+        self.jpa_repo = CreateJpaRepository(
+            self.nvim, self.tsutil, self.pathutil, self.messaging
+        )
 
     @command("CreateJavaFile", nargs="*")
     def create_java_file(self, args) -> None:
@@ -35,7 +39,7 @@ class Command(object):
         file_type: Literal["class", "interface", "record", "enum", "annotation"] = args[
             2
         ]
-        main_class_path = self.util.get_spring_main_class_path()
+        main_class_path = self.pathutil.get_spring_main_class_path()
         if main_class_path is None:
             self.messaging.log(
                 "Spring main class path not found", "error", send_msg=True
@@ -51,7 +55,7 @@ class Command(object):
 
     @command("CreateJPARepository")
     def create_jpa_repository(self) -> None:
-        root_path = self.util.spring_project_root_path
+        root_path = self.pathutil.spring_project_root_path
         if root_path is None:
             self.messaging.log(
                 "Unable to find the Spring root path. Is this a Spring Boot project?",

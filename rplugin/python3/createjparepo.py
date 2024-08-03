@@ -3,14 +3,22 @@ from pathlib import Path
 from pynvim.api.nvim import Nvim
 from tree_sitter import Node
 
-from coreutil import Util
+from pathutil import PathUtil
+from tsutil import TreesitterUtil
 from messaging import Messaging
 
 
 class CreateJpaRepository:
-    def __init__(self, nvim: Nvim, util: Util, messaging: Messaging):
+    def __init__(
+        self,
+        nvim: Nvim,
+        tsutil: TreesitterUtil,
+        pathutil: PathUtil,
+        messaging: Messaging,
+    ):
         self.nvim = nvim
-        self.util = util
+        self.tsutil = tsutil
+        self.pathutil = pathutil
         self.messaging = messaging
         self.class_annotation_query = """
         (class_declaration
@@ -61,10 +69,10 @@ class CreateJpaRepository:
         return boiler_plate
 
     def is_buffer_jpa_entity(self, buffer_node: Node, debugger: bool = False) -> bool:
-        results = self.util.query_node(
+        results = self.tsutil.query_node(
             buffer_node, self.class_annotation_query, debugger=debugger
         )
-        buffer_is_entity = self.util.query_results_has_term(
+        buffer_is_entity = self.tsutil.query_results_has_term(
             results, "Entity", debugger=debugger
         )
         if not buffer_is_entity:
@@ -72,10 +80,10 @@ class CreateJpaRepository:
         return True
 
     def buffer_has_id_field(self, buffer_node: Node, debugger: bool = False) -> bool:
-        results = self.util.query_node(
+        results = self.tsutil.query_node(
             buffer_node, self.id_field_annotation_query, debugger=debugger
         )
-        id_annotation_found = self.util.query_results_has_term(
+        id_annotation_found = self.tsutil.query_results_has_term(
             results, "Id", debugger=debugger
         )
         if not id_annotation_found:
@@ -85,7 +93,7 @@ class CreateJpaRepository:
     def get_buffer_superclass_node(
         self, buffer_node: Node, debugger: bool = False
     ) -> Node | None:
-        results = self.util.query_node(
+        results = self.tsutil.query_node(
             buffer_node, self.superclass_query, debugger=debugger
         )
         if len(results) == 0:
@@ -96,13 +104,13 @@ class CreateJpaRepository:
         self, root_path: Path, superclass_name: str, debugger: bool = False
     ) -> Node | None:
         for p in root_path.rglob("*.java"):
-            _node = self.util.get_node_from_path(p, debugger=debugger)
-            _results = self.util.query_node(
+            _node = self.tsutil.get_node_from_path(p, debugger=debugger)
+            _results = self.tsutil.query_node(
                 _node, self.class_name_query, debugger=debugger
             )
             if len(_results) == 0:
                 continue
-            class_name = self.util.get_node_text(_results[0][0], debugger=debugger)
+            class_name = self.tsutil.get_node_text(_results[0][0], debugger=debugger)
             if class_name == superclass_name:
                 return _node
         return None
@@ -120,18 +128,18 @@ class CreateJpaRepository:
                             for c3 in c2.children:
                                 if c3.type == "identifier":
                                     if (
-                                        self.util.get_node_text(c3)
+                                        self.tsutil.get_node_text(c3)
                                         == marker_annotation_name
                                     ):
                                         id_annotation_found = True
                                         if debugger:
                                             self.messaging.log(
-                                                f"Id annotation found: {self.util.get_node_text(c3)}",
+                                                f"Id annotation found: {self.tsutil.get_node_text(c3)}",
                                                 "debug",
                                             )
                 if id_annotation_found:
                     if c1.type == "type_identifier":
-                        id_type = self.util.get_node_text(c1)
+                        id_type = self.tsutil.get_node_text(c1)
                         if debugger:
                             self.messaging.log(f"Id type found: {id_type}", "debug")
                         return id_type
@@ -177,9 +185,11 @@ class CreateJpaRepository:
         self, root_path: Path, debugger: bool = False
     ) -> None:
         buffer_path = Path(self.nvim.current.buffer.name)
-        node = self.util.get_node_from_path(buffer_path, debugger=debugger)
-        class_name = self.util.get_node_class_name(node, debugger=debugger)
-        package_path = self.util.get_buffer_package_path(buffer_path, debugger=debugger)
+        node = self.tsutil.get_node_from_path(buffer_path, debugger=debugger)
+        class_name = self.tsutil.get_node_class_name(node, debugger=debugger)
+        package_path = self.pathutil.get_buffer_package_path(
+            buffer_path, debugger=debugger
+        )
         if class_name is None:
             self.messaging.log(
                 "Couldn't find the class name for this buffer.", "error", send_msg=True
@@ -201,7 +211,7 @@ class CreateJpaRepository:
                     send_msg=True,
                 )
                 return
-            superclass_name = self.util.get_node_text(
+            superclass_name = self.tsutil.get_node_text(
                 superclass_name_node, debugger=debugger
             )
             superclass_node = self.find_superclass_buffer(
