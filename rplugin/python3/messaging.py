@@ -14,8 +14,9 @@ class Messaging:
         )
         self.nvim = nvim
 
-    def print(self, msg: str) -> None:
-        self.nvim.command(f"echomsg '{msg}'")
+    def print(self, msg: str):
+        escaped_msg = msg.replace("'", "''")
+        self.nvim.command(f"echomsg '{escaped_msg}'")
 
     def log(
         self,
