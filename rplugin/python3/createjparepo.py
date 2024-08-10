@@ -6,7 +6,6 @@ from tree_sitter import Node
 from pathutil import PathUtil
 from tsutil import TreesitterUtil
 from messaging import Messaging
-from constants.java_types import JAVA_TYPES
 
 
 class CreateJpaRepository:
@@ -21,7 +20,6 @@ class CreateJpaRepository:
         self.tsutil = tsutil
         self.pathutil = pathutil
         self.messaging = messaging
-        self.java_types = JAVA_TYPES
         self.class_annotation_query = """
         (class_declaration
             (modifiers
