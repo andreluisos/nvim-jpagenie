@@ -92,16 +92,14 @@ class TreesitterUtil:
     def get_field_type_import_path(
         self, field_type: str, debugger: bool = False
     ) -> str | None:
-        for type_dict in JAVA_TYPES:
-            if field_type in type_dict:
-                value = type_dict[field_type]
+        for type_tuple in JAVA_TYPES:
+            if field_type == type_tuple[0]:
                 import_path: str
-                if value:
-                    import_path = f"{value}.{field_type}"
+                if type_tuple[1] is not None:
+                    import_path = f"{type_tuple[1]}.{type_tuple[0]}"
                 else:
-                    import_path = (
-                        field_type  # For primitive types or when value is None
-                    )
+                    # For primitive types or when value is None
+                    import_path = field_type[0]
                 if debugger:
                     self.messaging.log(f"Import path: {import_path}", "debug")
                 return import_path
