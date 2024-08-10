@@ -105,4 +105,6 @@ class TreesitterUtil:
                 if debugger:
                     self.messaging.log(f"Import path: {import_path}", "debug")
                 return import_path
+        if debugger:
+            self.messaging.log("Field type not found", "debug")
         return None
