@@ -63,4 +63,6 @@ class Command(object):
                 send_msg=True,
             )
             return
-        self.jpa_repo.create_jpa_entity_for_buffer(Path(root_path), debugger=True)
+        self.jpa_repo.create_jpa_entity_for_current_buffer(
+            Path(root_path), debugger=True
+        )
