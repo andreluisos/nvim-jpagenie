@@ -6,6 +6,7 @@ from tree_sitter import Node
 from pathutil import PathUtil
 from tsutil import TreesitterUtil
 from messaging import Messaging
+from constants.java_types import JAVA_TYPES
 
 
 class CreateJpaRepository:
@@ -20,6 +21,7 @@ class CreateJpaRepository:
         self.tsutil = tsutil
         self.pathutil = pathutil
         self.messaging = messaging
+        self.java_types = JAVA_TYPES
         self.class_annotation_query = """
         (class_declaration
             (modifiers
@@ -56,19 +58,22 @@ class CreateJpaRepository:
             )
         """
 
-    def get_boiler_plate(
+    def generate_jpa_repository_template(
         self, class_name: str, package_path: str, id_type: str, debugger: bool = False
     ) -> str:
+        id_type_import_path = self.tsutil.get_field_type_import_path(id_type, debugger)
         boiler_plate = (
             f"package {package_path};\n\n"
             f"import org.springframework.data.jpa.repository.JpaRepository;\n\n"
-            f"public interface {class_name}Repository extends JpaRepository<{class_name}, {id_type}> {{}}"
         )
+        if id_type_import_path:
+            boiler_plate += f"import {id_type_import_path};\n\n"
+        boiler_plate += f"public interface {class_name}Repository extends JpaRepository<{class_name}, {id_type}> {{}}"
         if debugger:
             self.messaging.log(f"Boiler plate: {boiler_plate}", "debug")
         return boiler_plate
 
-    def is_buffer_jpa_entity(self, buffer_node: Node, debugger: bool = False) -> bool:
+    def check_if_jpa_entity(self, buffer_node: Node, debugger: bool = False) -> bool:
         results = self.tsutil.query_node(
             buffer_node, self.class_annotation_query, debugger=debugger
         )
@@ -79,7 +84,9 @@ class CreateJpaRepository:
             return False
         return True
 
-    def buffer_has_id_field(self, buffer_node: Node, debugger: bool = False) -> bool:
+    def check_if_id_field_exists(
+        self, buffer_node: Node, debugger: bool = False
+    ) -> bool:
         results = self.tsutil.query_node(
             buffer_node, self.id_field_annotation_query, debugger=debugger
         )
@@ -90,7 +97,7 @@ class CreateJpaRepository:
             return False
         return True
 
-    def get_buffer_superclass_node(
+    def get_superclass_query_node(
         self, buffer_node: Node, debugger: bool = False
     ) -> Node | None:
         results = self.tsutil.query_node(
@@ -100,7 +107,7 @@ class CreateJpaRepository:
             return None
         return results[0][0]
 
-    def find_superclass_buffer(
+    def find_superclass_file_node(
         self, root_path: Path, superclass_name: str, debugger: bool = False
     ) -> Node | None:
         for p in root_path.rglob("*.java"):
@@ -115,44 +122,45 @@ class CreateJpaRepository:
                 return _node
         return None
 
-    def find_id_field_type_identifier(
+    def find_id_field_type(
         self, buffer_node: Node, debugger: bool = False
     ) -> str | None:
-        marker_annotation_name = "Id"
-        id_annotation_found = False
-        if buffer_node.type == "field_declaration":
-            for c1 in buffer_node.children:
-                if not id_annotation_found and c1.type == "modifiers":
-                    for c2 in c1.children:
-                        if c2.type == "marker_annotation":
-                            for c3 in c2.children:
-                                if c3.type == "identifier":
-                                    if (
-                                        self.tsutil.get_node_text(c3)
-                                        == marker_annotation_name
-                                    ):
-                                        id_annotation_found = True
+        child_node = buffer_node.children
+        for child in child_node:
+            if child.type != "class_declaration":
+                self.find_id_field_type(child)
+            else:
+                for c1 in child.children:
+                    if c1.type == "class_body":
+                        for c2 in c1.children:
+                            if c2.type == "field_declaration":
+                                id_field_found = False
+                                for c3 in c2.children:
+                                    # c3 = modifiers, type_identifer and variable_declarator
+                                    if c3.type == "modifiers":
+                                        for c4 in c3.children:
+                                            if c4.type == "marker_annotation":
+                                                for c5 in c4.children:
+                                                    if c5.type == "identifier":
+                                                        if (
+                                                            self.tsutil.get_node_text(
+                                                                c5
+                                                            )
+                                                            == "Id"
+                                                        ):
+                                                            id_field_found = True
+                                    if id_field_found and c3.type == "type_identifier":
+                                        id_field_type = self.tsutil.get_node_text(c3)
                                         if debugger:
                                             self.messaging.log(
-                                                f"Id annotation found: {self.tsutil.get_node_text(c3)}",
+                                                f"Id field type: {id_field_type}",
                                                 "debug",
                                             )
-                if id_annotation_found:
-                    if c1.type == "type_identifier":
-                        id_type = self.tsutil.get_node_text(c1)
-                        if debugger:
-                            self.messaging.log(f"Id type found: {id_type}", "debug")
-                        return id_type
-        for child in buffer_node.children:
-            result = self.find_id_field_type_identifier(child)
-            if result:
-                return result
-        self.messaging.log(
-            "Could not locate the Id field's type.", "error", send_msg=True
-        )
+                                        return self.tsutil.get_node_text(c3)
+        self.messaging.log("Id field type not found", "debug")
         return None
 
-    def create_jpa_repo_file(
+    def create_jpa_repository_file(
         self,
         buffer_path: Path,
         class_name: str,
@@ -181,7 +189,7 @@ class CreateJpaRepository:
         )
         return
 
-    def create_jpa_entity_for_buffer(
+    def create_jpa_entity_for_current_buffer(
         self, root_path: Path, debugger: bool = False
     ) -> None:
         buffer_path = Path(self.nvim.current.buffer.name)
@@ -195,13 +203,13 @@ class CreateJpaRepository:
                 "Couldn't find the class name for this buffer.", "error", send_msg=True
             )
             return
-        if not self.is_buffer_jpa_entity(node):
+        if not self.check_if_jpa_entity(node):
             self.messaging.log(
                 "Current buffer isn't a JPA entity.", "error", send_msg=True
             )
             return
-        if not self.buffer_has_id_field(node, debugger=debugger):
-            superclass_name_node = self.get_buffer_superclass_node(
+        if not self.check_if_id_field_exists(node, debugger=debugger):
+            superclass_name_node = self.get_superclass_query_node(
                 node, debugger=debugger
             )
             if not superclass_name_node:
@@ -214,7 +222,7 @@ class CreateJpaRepository:
             superclass_name = self.tsutil.get_node_text(
                 superclass_name_node, debugger=debugger
             )
-            superclass_node = self.find_superclass_buffer(
+            superclass_node = self.find_superclass_file_node(
                 root_path, superclass_name, debugger
             )
             if superclass_node is None:
@@ -222,7 +230,7 @@ class CreateJpaRepository:
                     "Unable to locate the superclass buffer.", "error", send_msg=True
                 )
                 return
-            if not self.buffer_has_id_field(superclass_node, debugger=debugger):
+            if not self.check_if_id_field_exists(superclass_node, debugger=debugger):
                 # TODO: Keep checking for superclasses?
                 self.messaging.log(
                     "Unable to find the Id field on the superclass.",
@@ -230,9 +238,7 @@ class CreateJpaRepository:
                     send_msg=True,
                 )
                 return
-            id_type = self.find_id_field_type_identifier(
-                superclass_node, debugger=debugger
-            )
+            id_type = self.find_id_field_type(superclass_node, debugger=debugger)
             if id_type is None:
                 self.messaging.log(
                     "Unable to find get the Id field type on the superclass.",
@@ -240,13 +246,13 @@ class CreateJpaRepository:
                     send_msg=True,
                 )
                 return
-            boiler_plate = self.get_boiler_plate(
+            boiler_plate = self.generate_jpa_repository_template(
                 class_name=class_name,
                 package_path=package_path,
                 id_type=id_type,
                 debugger=debugger,
             )
-            self.create_jpa_repo_file(
+            self.create_jpa_repository_file(
                 buffer_path=buffer_path,
                 class_name=class_name,
                 boiler_plate=boiler_plate,
