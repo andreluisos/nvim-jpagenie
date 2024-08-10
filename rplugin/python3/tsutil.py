@@ -3,11 +3,13 @@ from pathlib import Path
 import tree_sitter_java as tsjava
 from tree_sitter import Language, Node, Parser
 from messaging import Messaging
+from constants.java_types import JAVA_TYPES
 
 
 class TreesitterUtil:
     JAVA_LANGUAGE = Language(tsjava.language())
     PARSER = Parser(JAVA_LANGUAGE)
+    JAVA_TYPES = JAVA_TYPES
 
     def __init__(self, cwd: Path, messaging: Messaging):
         self.cwd: Path = cwd
@@ -85,4 +87,22 @@ class TreesitterUtil:
                 self.messaging.log(f"Class name: {class_name}", "debug")
             return class_name
         self.messaging.log("No class name found", "debug")
+        return None
+
+    def get_field_type_import_path(
+        self, field_type: str, debugger: bool = False
+    ) -> str | None:
+        for type_dict in JAVA_TYPES:
+            if field_type in type_dict:
+                value = type_dict[field_type]
+                import_path: str
+                if value:
+                    import_path = f"{value}.{field_type}"
+                else:
+                    import_path = (
+                        field_type  # For primitive types or when value is None
+                    )
+                if debugger:
+                    self.messaging.log(f"Import path: {import_path}", "debug")
+                return import_path
         return None
