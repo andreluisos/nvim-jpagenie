@@ -45,9 +45,6 @@ class CreateEntityField:
         class_body = self.tsutil.query_node(
             buffer_node, self.class_body_query, debugger
         )
-        for n in class_body:
-            self.messaging.log("here", "debug")
-            self.messaging.log(f"{n[0].start_byte} {n[0].end_byte}", "debug")
         if len(class_body) != 1:
             self.messaging.log(
                 "Couldn't find the class declaration.", "error", send_msg=True
