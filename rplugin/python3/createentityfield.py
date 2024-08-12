@@ -27,7 +27,8 @@ class CreateEntityField:
     def get_available_types(self) -> list[list[str | tuple[str, str | None]]]:
         return [[f"{t[0]} ({t[1]})", t] for t in self.java_types]
 
-    def get_insert_point(self, buffer_node: Node, debugger: bool = False) -> int:
+    def get_insert_point(self, buffer_path: Path, debugger: bool = False) -> int:
+        buffer_node = self.tsutil.get_node_from_path(buffer_path, debugger)
         field_declarations = self.tsutil.query_node(
             buffer_node, self.all_field_declarations_query, debugger
         )
@@ -128,24 +129,70 @@ class CreateEntityField:
         large_object: bool = False,
         debugger: bool = False,
     ) -> None:
-        template: bytes = self.generate_basic_field_template(
+        template = "\n\n" + self.generate_basic_field_template(
             field_type, field_name, nullable, unique, large_object, debugger
-        ).encode("utf-8")
-        buffer_bytes = self.tsutil.get_buffer_from_path(buffer_path, debugger)
-        buffer_node = self.tsutil.get_node_from_path(buffer_path, debugger)
-        insert_position = self.get_insert_point(buffer_node, debugger)
-        new_source = (
-            buffer_bytes[:insert_position]
-            + "\n\n".encode("utf-8")
-            + template
-            + buffer_bytes[insert_position:]
         )
-        buffer_path.write_bytes(new_source)
+        insert_position = self.get_insert_point(buffer_path, debugger)
+        self.tsutil.insert_code_into_position(
+            template, insert_position, buffer_path, debugger
+        )
         type_import_path = (
             f"import {self.tsutil.get_field_type_import_path(field_type, debugger)};"
         )
         if type_import_path is not None:
-            self.tsutil.add_import_path(buffer_path, type_import_path, debugger)
-        self.nvim.command(f"e {str(buffer_path)}")
-        self.nvim.command("lua vim.lsp.buf.format({ async = true })")
-        self.nvim.command("lua require('jdtls').organize_imports()")
+            self.tsutil.insert_import_path_into_buffer(
+                buffer_path, type_import_path, debugger
+            )
+        if debugger:
+            self.messaging.log(
+                f"buffer path: {buffer_path}"
+                f"field type: {field_type}, field name: {field_name}, "
+                f"nullable: {nullable}, unique: {unique}, large object: {large_object}",
+                "debug",
+            )
+        self.messaging.log(f"insert position: {insert_position}", "debug")
+        self.messaging.log(f"type import path: {type_import_path}", "debug")
+        self.messaging.log(f"template:\n{template}", "debug")
+        self.tsutil.reload_format_organize_buffer(buffer_path)
+
+    def create_enum_entity_field(
+        self,
+        buffer_path: Path,
+        field_type: str,
+        field_name: str,
+        enum_type: Literal["ORDINAL", "STRING"] = "ORDINAL",
+        string_length: int = 2,
+        nullable: bool = False,
+        unique: bool = False,
+        debugger: bool = False,
+    ) -> None:
+        template = "\n\n" + self.generate_enum_field_template(
+            field_type, field_name, enum_type, string_length, nullable, unique, debugger
+        )
+        insert_position = self.get_insert_point(buffer_path, debugger)
+        self.tsutil.insert_code_into_position(
+            template, insert_position, buffer_path, debugger
+        )
+        type_import_path = (
+            f"import {self.tsutil.get_field_type_import_path(field_type, debugger)};"
+        )
+        enumerated_import_path = "import jakarta.persistence.Enumerated;"
+        if type_import_path is not None:
+            self.tsutil.insert_import_path_into_buffer(
+                buffer_path, type_import_path, debugger
+            )
+        self.tsutil.insert_import_path_into_buffer(
+            buffer_path, enumerated_import_path, debugger
+        )
+        if debugger:
+            self.messaging.log(
+                f"buffer path: {buffer_path}"
+                f"field type: {field_type}, field name: {field_name}, "
+                f"nullable: {nullable}, unique: {unique}",
+                "debug",
+            )
+        self.messaging.log(f"insert position: {insert_position}", "debug")
+        self.messaging.log(f"type import path: {type_import_path}", "debug")
+        self.messaging.log(f"enumerated import path: {enumerated_import_path}", "debug")
+        self.messaging.log(f"template:\n{template}", "debug")
+        self.tsutil.reload_format_organize_buffer(buffer_path)
