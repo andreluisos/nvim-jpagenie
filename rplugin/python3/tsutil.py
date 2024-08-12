@@ -28,6 +28,11 @@ class TreesitterUtil:
         """
         self.import_declarations_query = "(import_declaration) @import"
 
+    def reload_format_organize_buffer(self, buffer_path: Path) -> None:
+        self.nvim.command(f"e {str(buffer_path)}")
+        self.nvim.command("lua vim.lsp.buf.format({ async = true })")
+        self.nvim.command("lua require('jdtls').organize_imports()")
+
     def is_buffer_jpa_entity(self, buffer_path: Path, debugger: bool = False) -> bool:
         buffer_node = self.get_node_from_path(buffer_path)
         results = self.query_node(
@@ -120,6 +125,20 @@ class TreesitterUtil:
         self.messaging.log("No class name found", "debug")
         return None
 
+    def insert_code_into_position(
+        self, code: str, insert_position, buffer_path: Path, debugger: bool = False
+    ) -> None:
+        buffer_bytes = self.get_buffer_from_path(buffer_path)
+        code_bytes = code.encode("utf-8")
+        new_source = (
+            buffer_bytes[:insert_position] + code_bytes + buffer_bytes[insert_position:]
+        )
+        if debugger:
+            self.messaging.log(f"Buffer: {str(buffer_path)}", "debug")
+            self.messaging.log(f"Code: {code}", "debug")
+            self.messaging.log(f"Insert position: {insert_position}", "debug")
+        buffer_path.write_bytes(new_source)
+
     def get_field_type_import_path(
         self, field_type: str, debugger: bool = False
     ) -> str | None:
@@ -138,11 +157,10 @@ class TreesitterUtil:
             self.messaging.log("Field type not found", "debug")
         return None
 
-    def add_import_path(
+    def insert_import_path_into_buffer(
         self, buffer_path: Path, import_path: str, debugger: bool = False
     ) -> None:
         buffer_node = self.get_node_from_path(buffer_path, debugger)
-        buffer_bytes = self.get_buffer_from_path(buffer_path, debugger)
         insert_position: int
         import_declarations = self.query_node(
             buffer_node, self.import_declarations_query, debugger
@@ -161,10 +179,6 @@ class TreesitterUtil:
                 raise ValueError(error_msg)
             insert_position = class_declaration[0][0].start_byte
         import_path_bytes = f"\n\n{import_path}\n\n".encode("utf-8")
-        new_source = (
-            buffer_bytes[:insert_position]
-            + import_path_bytes
-            + buffer_bytes[insert_position:]
-        )
-        buffer_path.write_bytes(new_source)
+        template = f"import {import_path_bytes};"
+        self.insert_code_into_position(template, insert_position, buffer_path, debugger)
         self.nvim.command(f"e {str(buffer_path)}")
