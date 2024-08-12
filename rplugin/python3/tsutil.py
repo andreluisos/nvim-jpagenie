@@ -1,5 +1,6 @@
 from pathlib import Path
 
+from pynvim.api.nvim import Nvim
 import tree_sitter_java as tsjava
 from tree_sitter import Language, Node, Parser
 from messaging import Messaging
@@ -11,9 +12,11 @@ class TreesitterUtil:
     PARSER = Parser(JAVA_LANGUAGE)
     JAVA_TYPES = JAVA_TYPES
 
-    def __init__(self, cwd: Path, messaging: Messaging):
+    def __init__(self, nvim: Nvim, cwd: Path, messaging: Messaging):
+        self.nvim = nvim
         self.cwd: Path = cwd
         self.messaging = messaging
+        self.class_declaration_query = "(class_declaration) @class"
         self.class_annotation_query = """
         (class_declaration
             (modifiers
@@ -23,6 +26,7 @@ class TreesitterUtil:
             )
         )
         """
+        self.import_declarations_query = "(import_declaration) @import"
 
     def is_buffer_jpa_entity(self, buffer_path: Path, debugger: bool = False) -> bool:
         buffer_node = self.get_node_from_path(buffer_path)
@@ -133,3 +137,34 @@ class TreesitterUtil:
         if debugger:
             self.messaging.log("Field type not found", "debug")
         return None
+
+    def add_import_path(
+        self, buffer_path: Path, import_path: str, debugger: bool = False
+    ) -> None:
+        buffer_node = self.get_node_from_path(buffer_path, debugger)
+        buffer_bytes = self.get_buffer_from_path(buffer_path, debugger)
+        insert_position: int
+        import_declarations = self.query_node(
+            buffer_node, self.import_declarations_query, debugger
+        )
+        if len(import_declarations) > 0:
+            insert_position = import_declarations[len(import_declarations) - 1][
+                0
+            ].end_byte
+        else:
+            class_declaration = self.query_node(
+                buffer_node, self.class_declaration_query, debugger
+            )
+            if len(class_declaration) != 1:
+                error_msg = "Unable to query class declaration"
+                self.messaging.log(error_msg, "error")
+                raise ValueError(error_msg)
+            insert_position = class_declaration[0][0].start_byte
+        import_path_bytes = f"\n\n{import_path}\n\n".encode("utf-8")
+        new_source = (
+            buffer_bytes[:insert_position]
+            + import_path_bytes
+            + buffer_bytes[insert_position:]
+        )
+        buffer_path.write_bytes(new_source)
+        self.nvim.command(f"e {str(buffer_path)}")
