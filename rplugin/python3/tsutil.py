@@ -14,6 +14,33 @@ class TreesitterUtil:
     def __init__(self, cwd: Path, messaging: Messaging):
         self.cwd: Path = cwd
         self.messaging = messaging
+        self.class_annotation_query = """
+        (class_declaration
+            (modifiers
+                (marker_annotation
+                name: (identifier) @annotation_name
+                )
+            )
+        )
+        """
+
+    def is_buffer_jpa_entity(self, buffer_path: Path, debugger: bool = False) -> bool:
+        buffer_node = self.get_node_from_path(buffer_path)
+        results = self.query_node(
+            buffer_node, self.class_annotation_query, debugger=debugger
+        )
+        buffer_is_entity = self.query_results_has_term(
+            results, "Entity", debugger=debugger
+        )
+        if debugger:
+            self.messaging.log(f"buffer path: {str(buffer_path)}", "debug")
+        if not buffer_is_entity:
+            if debugger:
+                self.messaging.log("buffer is jpa entity", "debug")
+            return False
+        if debugger:
+            self.messaging.log("buffer is not jpa entity", "debug")
+        return True
 
     def get_buffer_from_path(self, buffer_path: Path, debugger: bool = False) -> bytes:
         if debugger:

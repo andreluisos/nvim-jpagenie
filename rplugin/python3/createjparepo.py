@@ -20,15 +20,6 @@ class CreateJpaRepository:
         self.tsutil = tsutil
         self.pathutil = pathutil
         self.messaging = messaging
-        self.class_annotation_query = """
-        (class_declaration
-            (modifiers
-                (marker_annotation
-                name: (identifier) @annotation_name
-                )
-            )
-        )
-        """
         self.field_declaration_query = """
         (field_declaration
             (modifiers
@@ -70,17 +61,6 @@ class CreateJpaRepository:
         if debugger:
             self.messaging.log(f"Boiler plate: {boiler_plate}", "debug")
         return boiler_plate
-
-    def check_if_jpa_entity(self, buffer_node: Node, debugger: bool = False) -> bool:
-        results = self.tsutil.query_node(
-            buffer_node, self.class_annotation_query, debugger=debugger
-        )
-        buffer_is_entity = self.tsutil.query_results_has_term(
-            results, "Entity", debugger=debugger
-        )
-        if not buffer_is_entity:
-            return False
-        return True
 
     def check_if_id_field_exists(
         self, buffer_node: Node, debugger: bool = False
@@ -201,7 +181,7 @@ class CreateJpaRepository:
                 "Couldn't find the class name for this buffer.", "error", send_msg=True
             )
             return
-        if not self.check_if_jpa_entity(node):
+        if not self.tsutil.is_buffer_jpa_entity(buffer_path):
             self.messaging.log(
                 "Current buffer isn't a JPA entity.", "error", send_msg=True
             )
