@@ -1,3 +1,4 @@
+from typing import List
 from pynvim import plugin
 from pynvim.api import Nvim
 from pynvim.plugin import command
@@ -15,6 +16,9 @@ class JavaFileCommands(Base):
         # arg0 = package_path (str)
         # arg1 = file_name (str)
         # arg2 = file_type (java_file_lib)
+        attach_debugger: bool = self.arg_validator.attach_debugger(args)
+        if attach_debugger:
+            self.logging.log(f"args:\n{args}", "debug")
         self.arg_validator.validate_args_length(args, 3)
         validated_args = self.arg_validator.validate_args_type(
             args, ["str", "str", "java_file_lib"]
