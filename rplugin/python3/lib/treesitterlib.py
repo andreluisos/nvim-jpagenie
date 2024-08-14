@@ -30,6 +30,15 @@ class TreesitterLib:
         )
         """
         self.import_declarations_query = "(import_declaration) @import"
+        self.main_class_query = """
+        (class_declaration
+            (modifiers
+                (marker_annotation
+                name: (identifier) @annotation_name
+                )
+            )
+        ) 
+        """
 
     def save_buffer(
         self,
@@ -50,6 +59,17 @@ class TreesitterLib:
             self.logging.log(f"Format: {format}", "debug")
             self.logging.log(f"Organize imports: {organize_imports}", "debug")
         self.nvim.command(f"w {str(buffer_path)}")
+
+    def is_buffer_main_class(self, buffer_path: Path, debug: bool = False) -> bool:
+        buffer_node = self.get_node_from_path(buffer_path, debug)
+        results = self.query_node(buffer_node, self.main_class_query, debug)
+        if self.query_results_has_term(results, "SpringBootApplication", debug):
+            if debug:
+                self.logging.log(f"{str(buffer_path)} is the main class", "debug")
+            return True
+        if debug:
+            self.logging.log(f"{str(buffer_path)} is not the main class", "debug")
+        return False
 
     def is_buffer_jpa_entity(self, buffer_path: Path, debug: bool = False) -> bool:
         buffer_node = self.get_node_from_path(buffer_path)
