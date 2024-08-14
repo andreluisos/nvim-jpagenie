@@ -1,5 +1,6 @@
 from pathlib import Path
 
+from pynvim.api import Buffer
 from pynvim.api.nvim import Nvim
 from pynvim.plugin import command, plugin
 
@@ -68,13 +69,16 @@ class Command(object):
         # arg2 = nullable (bool)
         # arg3 = unique (bool)
         # arg4 = large_object (bool)
-        current_buffer = Path(self.nvim.current.buffer.name)
+        current_buffer: Buffer = self.nvim.current.buffer
+        buffer_bytes = self.tsutil.get_bytes_from_buffer(current_buffer)
+        buffer_path = Path(self.nvim.current.buffer.name)
         self.arg_validator.validate_args_length(args, 5)
         validated_args = self.arg_validator.validate_args_type(
             args, ["java_type", "str", "bool", "bool", "bool"]
         )
         self.entity_field.create_basic_entity_field(
-            current_buffer,
+            buffer_bytes,
+            buffer_path,
             *validated_args,
             debugger=True,
         )
@@ -87,13 +91,16 @@ class Command(object):
         # arg3 = string_length (int)
         # arg4 = nullable (bool)
         # arg5 = unique (bool)
-        current_buffer = Path(self.nvim.current.buffer.name)
+        current_buffer: Buffer = self.nvim.current.buffer
+        buffer_bytes = self.tsutil.get_bytes_from_buffer(current_buffer)
+        buffer_path = Path(self.nvim.current.buffer.name)
         self.arg_validator.validate_args_length(args, 6)
         validated_args = self.arg_validator.validate_args_type(
             args, ["str", "str", "enum", "int", "bool", "bool"]
         )
         self.entity_field.create_enum_entity_field(
-            current_buffer,
+            buffer_bytes,
+            buffer_path,
             *validated_args,
             debugger=True,
         )

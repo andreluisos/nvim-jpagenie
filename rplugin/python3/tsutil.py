@@ -1,5 +1,6 @@
 from pathlib import Path
 
+from pynvim.api import Buffer
 from pynvim.api.nvim import Nvim
 import tree_sitter_java as tsjava
 from tree_sitter import Language, Node, Parser
@@ -28,10 +29,25 @@ class TreesitterUtil:
         """
         self.import_declarations_query = "(import_declaration) @import"
 
-    def reload_format_organize_buffer(self, buffer_path: Path) -> None:
+    def save_buffer(
+        self,
+        buffer_bytes: bytes,
+        buffer_path: Path,
+        format: bool = True,
+        organize_imports: bool = True,
+        debugger: bool = False,
+    ) -> None:
+        buffer_path.write_bytes(buffer_bytes)
         self.nvim.command(f"e {str(buffer_path)}")
-        self.nvim.command("lua vim.lsp.buf.format({ async = true })")
-        self.nvim.command("lua require('jdtls').organize_imports()")
+        if format:
+            self.nvim.command("lua vim.lsp.buf.format({ async = true })")
+        if organize_imports:
+            self.nvim.command("lua require('jdtls').organize_imports()")
+        if debugger:
+            self.messaging.log(f"Buffer: {str(buffer_path)}", "debug")
+            self.messaging.log(f"Format: {format}", "debug")
+            self.messaging.log(f"Organize imports: {organize_imports}", "debug")
+        self.nvim.command(f"w {str(buffer_path)}")
 
     def is_buffer_jpa_entity(self, buffer_path: Path, debugger: bool = False) -> bool:
         buffer_node = self.get_node_from_path(buffer_path)
@@ -61,6 +77,12 @@ class TreesitterUtil:
             self.messaging.log(f"Buffer path: {str(buffer_path)}", "debug")
         buffer = self.get_buffer_from_path(buffer_path, debugger=debugger)
         return self.PARSER.parse(buffer).root_node
+
+    def get_node_from_bytes(self, buffer_bytes: bytes) -> Node:
+        return self.PARSER.parse(buffer_bytes).root_node
+
+    def get_bytes_from_buffer(self, buffer: Buffer) -> bytes:
+        return "\n".join(buffer[:]).encode("utf-8")
 
     def get_node_text(self, node: Node, debugger: bool = False) -> str:
         node_text = node.text.decode("utf-8") if node.text is not None else ""
@@ -125,26 +147,14 @@ class TreesitterUtil:
         self.messaging.log("No class name found", "debug")
         return None
 
-    def insert_code_into_position(
-        self, code: str, insert_position, buffer_path: Path, debugger: bool = False
-    ) -> None:
-        buffer_bytes = self.get_buffer_from_path(buffer_path)
-        code_bytes = code.encode("utf-8")
-        new_source = (
-            buffer_bytes[:insert_position] + code_bytes + buffer_bytes[insert_position:]
-        )
-        if debugger:
-            self.messaging.log(f"Buffer: {str(buffer_path)}", "debug")
-            self.messaging.log(f"Code: {code}", "debug")
-            self.messaging.log(f"Insert position: {insert_position}", "debug")
-        buffer_path.write_bytes(new_source)
-
     def get_field_type_import_path(
         self, field_type: str, debugger: bool = False
     ) -> str | None:
+        if debugger:
+            self.messaging.log(f"Field type: {field_type}", "debug")
         for type_tuple in JAVA_TYPES:
             if field_type == type_tuple[0]:
-                import_path: str
+                import_path: str = ""
                 if type_tuple[1] is not None:
                     import_path = f"{type_tuple[1]}.{type_tuple[0]}"
                 else:
@@ -157,10 +167,22 @@ class TreesitterUtil:
             self.messaging.log("Field type not found", "debug")
         return None
 
+    def insert_code_into_position(
+        self, code: str, insert_position, buffer_bytes: bytes, debugger: bool = False
+    ) -> bytes:
+        code_bytes = code.encode("utf-8")
+        new_source = (
+            buffer_bytes[:insert_position] + code_bytes + buffer_bytes[insert_position:]
+        )
+        if debugger:
+            self.messaging.log(f"Code: {code}", "debug")
+            self.messaging.log(f"Insert position: {insert_position}", "debug")
+        return new_source
+
     def insert_import_path_into_buffer(
-        self, buffer_path: Path, import_path: str, debugger: bool = False
-    ) -> None:
-        buffer_node = self.get_node_from_path(buffer_path, debugger)
+        self, buffer_bytes: bytes, import_path: str, debugger: bool = False
+    ) -> bytes:
+        buffer_node = self.get_node_from_bytes(buffer_bytes)
         insert_position: int
         import_declarations = self.query_node(
             buffer_node, self.import_declarations_query, debugger
@@ -178,7 +200,7 @@ class TreesitterUtil:
                 self.messaging.log(error_msg, "error")
                 raise ValueError(error_msg)
             insert_position = class_declaration[0][0].start_byte
-        import_path_bytes = f"\n\n{import_path}\n\n".encode("utf-8")
-        template = f"import {import_path_bytes};"
-        self.insert_code_into_position(template, insert_position, buffer_path, debugger)
-        self.nvim.command(f"e {str(buffer_path)}")
+        template = f"\nimport {import_path};\n\n"
+        return self.insert_code_into_position(
+            template, insert_position, buffer_bytes, debugger
+        )
