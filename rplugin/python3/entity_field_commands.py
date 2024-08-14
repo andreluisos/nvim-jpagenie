@@ -31,7 +31,7 @@ class EntityFieldCommands(Base):
             buffer_bytes,
             buffer_path,
             *validated_args,
-            debugger=True,
+            debug=True,
         )
 
     @command("GeneratedEnumEntityField", nargs="*")
@@ -53,5 +53,5 @@ class EntityFieldCommands(Base):
             buffer_bytes,
             buffer_path,
             *validated_args,
-            debugger=True,
+            debug=True,
         )

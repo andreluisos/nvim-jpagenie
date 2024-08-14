@@ -10,7 +10,7 @@ class JavaFileLib:
         self.logging = logging
 
     def get_boiler_plate(
-        self, file_type: str, package_path: str, file_name: str, debugger: bool = False
+        self, file_type: str, package_path: str, file_name: str, debug: bool = False
     ) -> str:
         boiler_plate: str = ""
         if file_type in ["class", "interface", "enum"]:
@@ -23,7 +23,7 @@ class JavaFileLib:
             boiler_plate = (
                 f"""package {package_path};\n\npublic @interface {file_name} {{\n\n}}"""
             )
-        if debugger:
+        if debug:
             self.logging.log(f"Boiler plate: {boiler_plate}", "debug")
         return boiler_plate
 
@@ -32,7 +32,7 @@ class JavaFileLib:
         main_class_path: str,
         package_path: str,
         file_name: str,
-        debugger: bool = False,
+        debug: bool = False,
     ) -> Path:
         base_path = Path(main_class_path).parent
         relative_path = Path(package_path.replace(".", "/"))
@@ -47,7 +47,7 @@ class JavaFileLib:
             / relative_path
             / f"{file_name}.java"
         )
-        if debugger:
+        if debug:
             self.logging.log(f"Base path: {str(base_path)}", "debug")
             self.logging.log(f"Relative path: {str(relative_path)}", "debug")
             self.logging.log(f"File path: {str(file_path.parent)}", "debug")
@@ -60,14 +60,10 @@ class JavaFileLib:
         package_path: str,
         file_name: str,
         file_type: Literal["class", "interface", "record", "enum", "annotation"],
-        debugger: bool = False,
+        debug: bool = False,
     ) -> None:
-        boiler_plate = self.get_boiler_plate(
-            file_type, package_path, file_name, debugger
-        )
-        file_path = self.get_file_path(
-            main_class_path, package_path, file_name, debugger
-        )
+        boiler_plate = self.get_boiler_plate(file_type, package_path, file_name, debug)
+        file_path = self.get_file_path(main_class_path, package_path, file_name, debug)
         if not file_path.exists():
             file_path.parent.mkdir(parents=True, exist_ok=True)
             with open(file_path, "w") as java_file:

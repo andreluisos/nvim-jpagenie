@@ -48,10 +48,10 @@ class JpaRepositoryLib:
         """
 
     def generate_jpa_repository_template(
-        self, class_name: str, package_path: str, id_type: str, debugger: bool = False
+        self, class_name: str, package_path: str, id_type: str, debug: bool = False
     ) -> str:
         id_type_import_path = self.treesitter_lib.get_field_type_import_path(
-            id_type, debugger
+            id_type, debug
         )
         boiler_plate = (
             f"package {package_path};\n\n"
@@ -60,53 +60,47 @@ class JpaRepositoryLib:
         if id_type_import_path:
             boiler_plate += f"import {id_type_import_path};\n\n"
         boiler_plate += f"public interface {class_name}Repository extends JpaRepository<{class_name}, {id_type}> {{}}"
-        if debugger:
+        if debug:
             self.logging.log(f"Boiler plate: {boiler_plate}", "debug")
         return boiler_plate
 
-    def check_if_id_field_exists(
-        self, buffer_node: Node, debugger: bool = False
-    ) -> bool:
+    def check_if_id_field_exists(self, buffer_node: Node, debug: bool = False) -> bool:
         results = self.treesitter_lib.query_node(
-            buffer_node, self.id_field_annotation_query, debugger=debugger
+            buffer_node, self.id_field_annotation_query, debug=debug
         )
         id_annotation_found = self.treesitter_lib.query_results_has_term(
-            results, "Id", debugger=debugger
+            results, "Id", debug=debug
         )
         if not id_annotation_found:
             return False
         return True
 
     def get_superclass_query_node(
-        self, buffer_node: Node, debugger: bool = False
+        self, buffer_node: Node, debug: bool = False
     ) -> Node | None:
         results = self.treesitter_lib.query_node(
-            buffer_node, self.superclass_query, debugger=debugger
+            buffer_node, self.superclass_query, debug=debug
         )
         if len(results) == 0:
             return None
         return results[0][0]
 
     def find_superclass_file_node(
-        self, root_path: Path, superclass_name: str, debugger: bool = False
+        self, root_path: Path, superclass_name: str, debug: bool = False
     ) -> Node | None:
         for p in root_path.rglob("*.java"):
-            _node = self.treesitter_lib.get_node_from_path(p, debugger=debugger)
+            _node = self.treesitter_lib.get_node_from_path(p, debug=debug)
             _results = self.treesitter_lib.query_node(
-                _node, self.class_name_query, debugger=debugger
+                _node, self.class_name_query, debug=debug
             )
             if len(_results) == 0:
                 continue
-            class_name = self.treesitter_lib.get_node_text(
-                _results[0][0], debugger=debugger
-            )
+            class_name = self.treesitter_lib.get_node_text(_results[0][0], debug=debug)
             if class_name == superclass_name:
                 return _node
         return None
 
-    def find_id_field_type(
-        self, buffer_node: Node, debugger: bool = False
-    ) -> str | None:
+    def find_id_field_type(self, buffer_node: Node, debug: bool = False) -> str | None:
         child_node = buffer_node.children
         for child in child_node:
             if child.type != "class_declaration":
@@ -135,7 +129,7 @@ class JpaRepositoryLib:
                                         id_field_type = (
                                             self.treesitter_lib.get_node_text(c3)
                                         )
-                                        if debugger:
+                                        if debug:
                                             self.logging.log(
                                                 f"Id field type: {id_field_type}",
                                                 "debug",
@@ -149,10 +143,10 @@ class JpaRepositoryLib:
         buffer_path: Path,
         class_name: str,
         boiler_plate: str,
-        debugger: bool = False,
+        debug: bool = False,
     ) -> None:
         file_path = buffer_path.parent.joinpath(f"{class_name}Repository.java")
-        if debugger:
+        if debug:
             self.logging.log(f"Class name: {class_name}", "debug")
             self.logging.log(f"JPA repository path: {file_path}", "debug")
             self.logging.log(f"Boiler plate: {boiler_plate}", "debug")
@@ -160,7 +154,7 @@ class JpaRepositoryLib:
             with open(file_path, "w") as java_file:
                 java_file.write(boiler_plate)
             if file_path.exists():
-                if debugger:
+                if debug:
                     self.logging.log(
                         "Successfuly created JPA repository file.", "debug"
                     )
@@ -175,14 +169,12 @@ class JpaRepositoryLib:
         return
 
     def create_jpa_entity_for_current_buffer(
-        self, root_path: Path, debugger: bool = False
+        self, root_path: Path, debug: bool = False
     ) -> None:
         buffer_path = Path(self.nvim.current.buffer.name)
-        node = self.treesitter_lib.get_node_from_path(buffer_path, debugger=debugger)
-        class_name = self.treesitter_lib.get_node_class_name(node, debugger=debugger)
-        package_path = self.path_lib.get_buffer_package_path(
-            buffer_path, debugger=debugger
-        )
+        node = self.treesitter_lib.get_node_from_path(buffer_path, debug=debug)
+        class_name = self.treesitter_lib.get_node_class_name(node, debug=debug)
+        package_path = self.path_lib.get_buffer_package_path(buffer_path, debug=debug)
         if class_name is None:
             self.logging.log(
                 "Couldn't find the class name for this buffer.",
@@ -195,10 +187,8 @@ class JpaRepositoryLib:
                 "error",
             )
             return
-        if not self.check_if_id_field_exists(node, debugger=debugger):
-            superclass_name_node = self.get_superclass_query_node(
-                node, debugger=debugger
-            )
+        if not self.check_if_id_field_exists(node, debug=debug):
+            superclass_name_node = self.get_superclass_query_node(node, debug=debug)
             if not superclass_name_node:
                 self.logging.log(
                     "No Id found for this entity and no superclass to look for it.",
@@ -206,10 +196,10 @@ class JpaRepositoryLib:
                 )
                 return
             superclass_name = self.treesitter_lib.get_node_text(
-                superclass_name_node, debugger=debugger
+                superclass_name_node, debug=debug
             )
             superclass_node = self.find_superclass_file_node(
-                root_path, superclass_name, debugger
+                root_path, superclass_name, debug
             )
             if superclass_node is None:
                 self.logging.log(
@@ -217,14 +207,14 @@ class JpaRepositoryLib:
                     "error",
                 )
                 return
-            if not self.check_if_id_field_exists(superclass_node, debugger=debugger):
+            if not self.check_if_id_field_exists(superclass_node, debug=debug):
                 # TODO: Keep checking for superclasses?
                 self.logging.log(
                     "Unable to find the Id field on the superclass.",
                     "error",
                 )
                 return
-            id_type = self.find_id_field_type(superclass_node, debugger=debugger)
+            id_type = self.find_id_field_type(superclass_node, debug=debug)
             if id_type is None:
                 self.logging.log(
                     "Unable to find get the Id field type on the superclass.",
@@ -235,11 +225,11 @@ class JpaRepositoryLib:
                 class_name=class_name,
                 package_path=package_path,
                 id_type=id_type,
-                debugger=debugger,
+                debug=debug,
             )
             self.create_jpa_repository_file(
                 buffer_path=buffer_path,
                 class_name=class_name,
                 boiler_plate=boiler_plate,
-                debugger=debugger,
+                debug=debug,
             )

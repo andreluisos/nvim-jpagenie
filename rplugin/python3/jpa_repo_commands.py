@@ -24,5 +24,5 @@ class JpaRepoCommands(Base):
             )
             raise ValueError(error_msg)
         self.jpa_repo_lib.create_jpa_entity_for_current_buffer(
-            Path(root_path), debugger=True
+            Path(root_path), debug=True
         )

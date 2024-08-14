@@ -23,5 +23,5 @@ class JavaFileCommands(Base):
         self.java_file_lib.create_java_file(
             main_class_path,
             *validated_args,
-            debugger=True,
+            debug=attach_debugger,
         )
