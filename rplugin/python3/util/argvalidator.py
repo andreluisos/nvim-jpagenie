@@ -1,12 +1,12 @@
-from typing import Any, List, Callable
-from constants.java_types import JAVA_TYPES
-from messaging import Messaging
+from typing import Any, Callable, List
+
+from util.logging import Logging
 
 
 class ArgValidator:
-    def __init__(self, messaging: Messaging) -> None:
-        self.messaging = messaging
-        self.java_types = JAVA_TYPES
+    def __init__(self, java_basic_types: list[tuple], logging: Logging) -> None:
+        self.logging = logging
+        self.java_basic_types = java_basic_types
         self.invalid_arg_type_msg = "Invalid argument type."
 
     def is_boolean(self, value: str) -> bool:
@@ -40,7 +40,7 @@ class ArgValidator:
         raise ValueError(self.invalid_arg_type_msg)
 
     def convert_to_java_type(self, value: str) -> str:
-        if value in [k[0] for k in self.java_types]:
+        if value in [k[0] for k in self.java_basic_types]:
             return value
         raise ValueError(f"{value} is not a valid Java basic type.")
 
@@ -52,7 +52,7 @@ class ArgValidator:
     def validate_args_length(self, args: Any, required_len: int) -> None:
         if len(args) != required_len:
             error_msg = f"{required_len} arguments are required."
-            self.messaging.log(error_msg, "error")
+            self.logging.log(error_msg, "error")
             raise ValueError(error_msg)
 
     def validate_args_type(
@@ -62,7 +62,7 @@ class ArgValidator:
             error_msg = (
                 "The number of arguments and the number of required types must match."
             )
-            self.messaging.log(error_msg, "error")
+            self.logging.log(error_msg, "error")
             raise ValueError(error_msg)
 
         type_conversion_map: dict[str, Callable[[str], Any]] = {
@@ -81,10 +81,10 @@ class ArgValidator:
                 try:
                     converted_args.append(type_conversion_map[required_type](arg))
                 except ValueError:
-                    self.messaging.log(self.invalid_arg_type_msg, "error")
+                    self.logging.log(self.invalid_arg_type_msg, "error")
                     raise ValueError(f"Cannot convert {arg} to {required_type}")
             else:
-                self.messaging.log(self.invalid_arg_type_msg, "error")
+                self.logging.log(self.invalid_arg_type_msg, "error")
                 raise ValueError(f"Unsupported type: {required_type}")
 
         return converted_args

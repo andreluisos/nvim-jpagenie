@@ -1,4 +1,4 @@
-JAVA_TYPES = [
+JAVA_BASIC_TYPES = [
     ("String", "java.lang"),
     ("Long", "java.lang"),
     ("Integer", "java.lang"),
