@@ -19,7 +19,7 @@ class Base(object):
         self.nvim = nvim
         self.cwd = Path(self.nvim.funcs.getcwd()).resolve()
         self.java_basic_types = JAVA_BASIC_TYPES
-        self.logging = Logging(nvim)
+        self.logging = Logging()
         self.arg_validator = ArgValidator(self.java_basic_types, self.logging)
         self.treesitter_lib = TreesitterLib(
             self.nvim, self.java_basic_types, self.cwd, self.logging

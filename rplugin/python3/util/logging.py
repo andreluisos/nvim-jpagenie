@@ -4,14 +4,13 @@ from inspect import stack
 
 
 class Logging:
-    def __init__(self, nvim):
+    def __init__(self):
         basicConfig(
             filename="logging.log",
             level=DEBUG,
             format="[%(asctime)s - %(name)s - %(levelname)s] - %(message)s",
             datefmt="%Y-%m-%d %H:%M:%S",
         )
-        self.nvim = nvim
 
     def build_call_stack(self) -> str:
         call_stack: list[str] = []
