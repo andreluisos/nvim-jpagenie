@@ -1,13 +1,15 @@
 from pathlib import Path
 
-from pynvim.plugin import command
+from pynvim.api import Nvim
+from pynvim import command, plugin
 
 from base import Base
 
 
+@plugin
 class JpaRepoCommands(Base):
-    def __init__(self) -> None:
-        super()
+    def __init__(self, nvim: Nvim) -> None:
+        super().__init__(nvim)
 
     @command("CreateJPARepository")
     def create_jpa_repo_libsitory(self) -> None:

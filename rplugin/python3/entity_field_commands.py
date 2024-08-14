@@ -1,14 +1,17 @@
 from pathlib import Path
 
 from pynvim.api import Buffer
+from pynvim import plugin
+from pynvim.api import Buffer, Nvim
 from pynvim.plugin import command
 
 from base import Base
 
 
+@plugin
 class EntityFieldCommands(Base):
-    def __init__(self) -> None:
-        super()
+    def __init__(self, nvim: Nvim) -> None:
+        super().__init__(nvim)
 
     @command("GenerateBasicEntityField", nargs="*")
     def generate_basic_entity_field_lib(self, args) -> None:

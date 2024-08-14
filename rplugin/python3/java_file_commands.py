@@ -1,11 +1,14 @@
+from pynvim import plugin
+from pynvim.api import Nvim
 from pynvim.plugin import command
 
 from base import Base
 
 
+@plugin
 class JavaFileCommands(Base):
-    def __init__(self) -> None:
-        super()
+    def __init__(self, nvim: Nvim) -> None:
+        super().__init__(nvim)
 
     @command("CreateJavaFile", nargs="*")
     def create_java_file_lib(self, args) -> None:

@@ -1,7 +1,6 @@
 from pathlib import Path
 
 from pynvim.api.nvim import Nvim
-from pynvim.plugin import plugin
 
 from constants.typing import JAVA_BASIC_TYPES
 from lib.entityfieldlib import EntityFieldLib
@@ -13,7 +12,6 @@ from util.argvalidator import ArgValidator
 from util.logging import Logging
 
 
-@plugin
 class Base(object):
     def __init__(self, nvim: Nvim) -> None:
         self.nvim = nvim
