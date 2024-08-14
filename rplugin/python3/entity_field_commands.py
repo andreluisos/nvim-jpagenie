@@ -14,7 +14,7 @@ class EntityFieldCommands(Base):
         super().__init__(nvim)
 
     @command("GenerateBasicEntityField", nargs="*")
-    def generate_basic_entity_field_lib(self, args) -> None:
+    def generate_basic_entity_field_lib(self, args: List[str]) -> None:
         # arg0 = field_type (java_type)
         # arg1 = field_name (str)
         # arg2 = nullable (bool)
@@ -35,7 +35,7 @@ class EntityFieldCommands(Base):
         )
 
     @command("GeneratedEnumEntityField", nargs="*")
-    def generate_enum_entity_field(self, args) -> None:
+    def generate_enum_entity_field(self, args: List[str]) -> None:
         # arg0 = field_type (str)
         # arg1 = field_name (str)
         # arg2 = enum_type (ORDINAL | STRING)

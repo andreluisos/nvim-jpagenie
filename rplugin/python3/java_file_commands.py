@@ -11,7 +11,7 @@ class JavaFileCommands(Base):
         super().__init__(nvim)
 
     @command("CreateJavaFile", nargs="*")
-    def create_java_file_lib(self, args) -> None:
+    def create_java_file_lib(self, args: List[str]) -> None:
         # arg0 = package_path (str)
         # arg1 = file_name (str)
         # arg2 = file_type (java_file_lib)
