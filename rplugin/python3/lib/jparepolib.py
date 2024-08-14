@@ -3,34 +3,23 @@ from pathlib import Path
 from pynvim.api.nvim import Nvim
 from tree_sitter import Node
 
-from pathutil import PathUtil
-from tsutil import TreesitterUtil
-from messaging import Messaging
-from constants.java_types import JAVA_TYPES
+from lib.pathlib import PathLib
+from lib.treesitterlib import TreesitterLib
+from util.logging import Logging
 
 
-class CreateJpaRepository:
+class JpaRepositoryLib:
     def __init__(
         self,
         nvim: Nvim,
-        tsutil: TreesitterUtil,
-        pathutil: PathUtil,
-        messaging: Messaging,
+        treesitter_lib: TreesitterLib,
+        path_lib: PathLib,
+        logging: Logging,
     ):
         self.nvim = nvim
-        self.tsutil = tsutil
-        self.pathutil = pathutil
-        self.messaging = messaging
-        self.java_types = JAVA_TYPES
-        self.class_annotation_query = """
-        (class_declaration
-            (modifiers
-                (marker_annotation
-                name: (identifier) @annotation_name
-                )
-            )
-        )
-        """
+        self.treesitter_lib = treesitter_lib
+        self.path_lib = path_lib
+        self.logging = logging
         self.field_declaration_query = """
         (field_declaration
             (modifiers
@@ -61,7 +50,9 @@ class CreateJpaRepository:
     def generate_jpa_repository_template(
         self, class_name: str, package_path: str, id_type: str, debugger: bool = False
     ) -> str:
-        id_type_import_path = self.tsutil.get_field_type_import_path(id_type, debugger)
+        id_type_import_path = self.treesitter_lib.get_field_type_import_path(
+            id_type, debugger
+        )
         boiler_plate = (
             f"package {package_path};\n\n"
             f"import org.springframework.data.jpa.repository.JpaRepository;\n\n"
@@ -70,27 +61,16 @@ class CreateJpaRepository:
             boiler_plate += f"import {id_type_import_path};\n\n"
         boiler_plate += f"public interface {class_name}Repository extends JpaRepository<{class_name}, {id_type}> {{}}"
         if debugger:
-            self.messaging.log(f"Boiler plate: {boiler_plate}", "debug")
+            self.logging.log(f"Boiler plate: {boiler_plate}", "debug")
         return boiler_plate
-
-    def check_if_jpa_entity(self, buffer_node: Node, debugger: bool = False) -> bool:
-        results = self.tsutil.query_node(
-            buffer_node, self.class_annotation_query, debugger=debugger
-        )
-        buffer_is_entity = self.tsutil.query_results_has_term(
-            results, "Entity", debugger=debugger
-        )
-        if not buffer_is_entity:
-            return False
-        return True
 
     def check_if_id_field_exists(
         self, buffer_node: Node, debugger: bool = False
     ) -> bool:
-        results = self.tsutil.query_node(
+        results = self.treesitter_lib.query_node(
             buffer_node, self.id_field_annotation_query, debugger=debugger
         )
-        id_annotation_found = self.tsutil.query_results_has_term(
+        id_annotation_found = self.treesitter_lib.query_results_has_term(
             results, "Id", debugger=debugger
         )
         if not id_annotation_found:
@@ -100,7 +80,7 @@ class CreateJpaRepository:
     def get_superclass_query_node(
         self, buffer_node: Node, debugger: bool = False
     ) -> Node | None:
-        results = self.tsutil.query_node(
+        results = self.treesitter_lib.query_node(
             buffer_node, self.superclass_query, debugger=debugger
         )
         if len(results) == 0:
@@ -111,13 +91,15 @@ class CreateJpaRepository:
         self, root_path: Path, superclass_name: str, debugger: bool = False
     ) -> Node | None:
         for p in root_path.rglob("*.java"):
-            _node = self.tsutil.get_node_from_path(p, debugger=debugger)
-            _results = self.tsutil.query_node(
+            _node = self.treesitter_lib.get_node_from_path(p, debugger=debugger)
+            _results = self.treesitter_lib.query_node(
                 _node, self.class_name_query, debugger=debugger
             )
             if len(_results) == 0:
                 continue
-            class_name = self.tsutil.get_node_text(_results[0][0], debugger=debugger)
+            class_name = self.treesitter_lib.get_node_text(
+                _results[0][0], debugger=debugger
+            )
             if class_name == superclass_name:
                 return _node
         return None
@@ -143,21 +125,23 @@ class CreateJpaRepository:
                                                 for c5 in c4.children:
                                                     if c5.type == "identifier":
                                                         if (
-                                                            self.tsutil.get_node_text(
+                                                            self.treesitter_lib.get_node_text(
                                                                 c5
                                                             )
                                                             == "Id"
                                                         ):
                                                             id_field_found = True
                                     if id_field_found and c3.type == "type_identifier":
-                                        id_field_type = self.tsutil.get_node_text(c3)
+                                        id_field_type = (
+                                            self.treesitter_lib.get_node_text(c3)
+                                        )
                                         if debugger:
-                                            self.messaging.log(
+                                            self.logging.log(
                                                 f"Id field type: {id_field_type}",
                                                 "debug",
                                             )
-                                        return self.tsutil.get_node_text(c3)
-        self.messaging.log("Id field type not found", "debug")
+                                        return self.treesitter_lib.get_node_text(c3)
+        self.logging.log("Id field type not found", "debug")
         return None
 
     def create_jpa_repository_file(
@@ -169,23 +153,24 @@ class CreateJpaRepository:
     ) -> None:
         file_path = buffer_path.parent.joinpath(f"{class_name}Repository.java")
         if debugger:
-            self.messaging.log(f"Class name: {class_name}", "debug")
-            self.messaging.log(f"JPA repository path: {file_path}", "debug")
-            self.messaging.log(f"Boiler plate: {boiler_plate}", "debug")
+            self.logging.log(f"Class name: {class_name}", "debug")
+            self.logging.log(f"JPA repository path: {file_path}", "debug")
+            self.logging.log(f"Boiler plate: {boiler_plate}", "debug")
         if not file_path.exists():
             with open(file_path, "w") as java_file:
                 java_file.write(boiler_plate)
             if file_path.exists():
                 if debugger:
-                    self.messaging.log(
+                    self.logging.log(
                         "Successfuly created JPA repository file.", "debug"
                     )
                 self.nvim.command(f"edit {file_path}")
                 # TODO: make sure jdtls is in plugin dependencies.
                 self.nvim.command("lua require('jdtls').organize_imports()")
                 return
-        self.messaging.log(
-            "Unable to create JPA repository file.", "error", send_msg=True
+        self.logging.log(
+            "Unable to create JPA repository file.",
+            "error",
         )
         return
 
@@ -193,19 +178,21 @@ class CreateJpaRepository:
         self, root_path: Path, debugger: bool = False
     ) -> None:
         buffer_path = Path(self.nvim.current.buffer.name)
-        node = self.tsutil.get_node_from_path(buffer_path, debugger=debugger)
-        class_name = self.tsutil.get_node_class_name(node, debugger=debugger)
-        package_path = self.pathutil.get_buffer_package_path(
+        node = self.treesitter_lib.get_node_from_path(buffer_path, debugger=debugger)
+        class_name = self.treesitter_lib.get_node_class_name(node, debugger=debugger)
+        package_path = self.path_lib.get_buffer_package_path(
             buffer_path, debugger=debugger
         )
         if class_name is None:
-            self.messaging.log(
-                "Couldn't find the class name for this buffer.", "error", send_msg=True
+            self.logging.log(
+                "Couldn't find the class name for this buffer.",
+                "error",
             )
             return
-        if not self.check_if_jpa_entity(node):
-            self.messaging.log(
-                "Current buffer isn't a JPA entity.", "error", send_msg=True
+        if not self.treesitter_lib.is_buffer_jpa_entity(buffer_path):
+            self.logging.log(
+                "Current buffer isn't a JPA entity.",
+                "error",
             )
             return
         if not self.check_if_id_field_exists(node, debugger=debugger):
@@ -213,37 +200,35 @@ class CreateJpaRepository:
                 node, debugger=debugger
             )
             if not superclass_name_node:
-                self.messaging.log(
+                self.logging.log(
                     "No Id found for this entity and no superclass to look for it.",
                     "error",
-                    send_msg=True,
                 )
                 return
-            superclass_name = self.tsutil.get_node_text(
+            superclass_name = self.treesitter_lib.get_node_text(
                 superclass_name_node, debugger=debugger
             )
             superclass_node = self.find_superclass_file_node(
                 root_path, superclass_name, debugger
             )
             if superclass_node is None:
-                self.messaging.log(
-                    "Unable to locate the superclass buffer.", "error", send_msg=True
+                self.logging.log(
+                    "Unable to locate the superclass buffer.",
+                    "error",
                 )
                 return
             if not self.check_if_id_field_exists(superclass_node, debugger=debugger):
                 # TODO: Keep checking for superclasses?
-                self.messaging.log(
+                self.logging.log(
                     "Unable to find the Id field on the superclass.",
                     "error",
-                    send_msg=True,
                 )
                 return
             id_type = self.find_id_field_type(superclass_node, debugger=debugger)
             if id_type is None:
-                self.messaging.log(
+                self.logging.log(
                     "Unable to find get the Id field type on the superclass.",
                     "error",
-                    send_msg=True,
                 )
                 return
             boiler_plate = self.generate_jpa_repository_template(
