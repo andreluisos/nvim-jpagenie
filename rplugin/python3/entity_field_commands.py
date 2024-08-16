@@ -1,6 +1,5 @@
 from pathlib import Path
 
-from pynvim.api import Buffer
 from pynvim import plugin
 from pynvim.api import Buffer, Nvim
 from pynvim.plugin import command
