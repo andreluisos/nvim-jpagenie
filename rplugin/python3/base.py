@@ -23,7 +23,7 @@ class Base(object):
             self.nvim, self.java_basic_types, self.cwd, self.logging
         )
         self.path_lib = PathLib(self.cwd, self.treesitter_lib, self.logging)
-        self.java_file_lib = JavaFileLib(self.nvim, self.logging)
+        self.java_file_lib = JavaFileLib(self.nvim, self.logging, self.treesitter_lib)
         self.jpa_repo_lib = JpaRepositoryLib(
             self.nvim, self.treesitter_lib, self.path_lib, self.logging
         )

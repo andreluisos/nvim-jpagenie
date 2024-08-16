@@ -21,7 +21,7 @@ class JavaFileCommands(Base):
             self.logging.log(f"args:\n{args}", "debug")
         self.arg_validator.validate_args_length(args, 3)
         validated_args = self.arg_validator.validate_args_type(
-            args, ["str", "str", "java_file_lib"]
+            args, ["str", "str", "java_file"]
         )
         main_class_path = self.path_lib.get_spring_main_class_path()
         self.java_file_lib.create_java_file(
