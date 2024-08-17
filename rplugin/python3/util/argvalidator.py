@@ -9,6 +9,16 @@ class ArgValidator:
         self.java_basic_types = java_basic_types
         self.invalid_arg_type_msg = "Invalid argument type."
 
+    def clean_up_args(self, args: List[str]) -> List[str]:
+        if "debug" in args:
+            args.remove("debug")
+        return args
+
+    def attach_debugger(self, args: List[str]) -> bool:
+        if "debug" in args:
+            return True
+        return False
+
     def is_boolean(self, value: str) -> bool:
         valid_true = {"true", "1", "yes", "on"}
         valid_false = {"false", "0", "no", "off"}
@@ -49,8 +59,11 @@ class ArgValidator:
             return value
         raise ValueError(f"{value} is not a valid Java file type")
 
-    def validate_args_length(self, args: Any, required_len: int) -> None:
-        if len(args) != required_len:
+    def validate_args_length(self, args: List[str], required_len: int) -> None:
+        clean_args = args
+        if self.attach_debugger(args):
+            clean_args = self.clean_up_args(args)
+        if len(clean_args) != required_len:
             error_msg = f"{required_len} arguments are required."
             self.logging.log(error_msg, "error")
             raise ValueError(error_msg)

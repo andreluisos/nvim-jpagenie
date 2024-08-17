@@ -1,4 +1,5 @@
 from pathlib import Path
+from typing import List
 
 from pynvim import plugin
 from pynvim.api import Buffer, Nvim
@@ -13,12 +14,15 @@ class EntityFieldCommands(Base):
         super().__init__(nvim)
 
     @command("GenerateBasicEntityField", nargs="*")
-    def generate_basic_entity_field_lib(self, args) -> None:
+    def generate_basic_entity_field_lib(self, args: List[str]) -> None:
         # arg0 = field_type (java_type)
         # arg1 = field_name (str)
         # arg2 = nullable (bool)
         # arg3 = unique (bool)
         # arg4 = large_object (bool)
+        attach_debugger: bool = self.arg_validator.attach_debugger(args)
+        if attach_debugger:
+            self.logging.log(f"args:\n{args}", "debug")
         current_buffer: Buffer = self.nvim.current.buffer
         buffer_bytes = self.treesitter_lib.get_bytes_from_buffer(current_buffer)
         buffer_path = Path(self.nvim.current.buffer.name)
@@ -30,17 +34,20 @@ class EntityFieldCommands(Base):
             buffer_bytes,
             buffer_path,
             *validated_args,
-            debugger=True,
+            debug=True,
         )
 
     @command("GeneratedEnumEntityField", nargs="*")
-    def generate_enum_entity_field(self, args) -> None:
+    def generate_enum_entity_field(self, args: List[str]) -> None:
         # arg0 = field_type (str)
         # arg1 = field_name (str)
         # arg2 = enum_type (ORDINAL | STRING)
         # arg3 = string_length (int)
         # arg4 = nullable (bool)
         # arg5 = unique (bool)
+        attach_debugger: bool = self.arg_validator.attach_debugger(args)
+        if attach_debugger:
+            self.logging.log(f"args:\n{args}", "debug")
         current_buffer: Buffer = self.nvim.current.buffer
         buffer_bytes = self.treesitter_lib.get_bytes_from_buffer(current_buffer)
         buffer_path = Path(self.nvim.current.buffer.name)
@@ -52,5 +59,5 @@ class EntityFieldCommands(Base):
             buffer_bytes,
             buffer_path,
             *validated_args,
-            debugger=True,
+            debug=True,
         )
