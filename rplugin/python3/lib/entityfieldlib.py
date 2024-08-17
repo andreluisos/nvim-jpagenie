@@ -113,8 +113,10 @@ class EntityFieldLib:
         template += enum_body + field_template
         if debug:
             self.logging.log(
-                f"field type: {field_type}, field name: {field_name}, enum type: {enum_type},"
-                f"string length: {string_length}, nullable: {nullable}, unique: {unique}",
+                [
+                    f"field type: {field_type}, field name: {field_name}, enum type: {enum_type},"
+                    f"string length: {string_length}, nullable: {nullable}, unique: {unique}"
+                ],
                 "debug",
             )
             self.logging.log(f"template:\n{template}", "debug")
@@ -157,7 +159,7 @@ class EntityFieldLib:
         )
         if debug:
             self.logging.log(
-                (
+                [
                     f"buffer path: {buffer_path}\n"
                     f"field type: {field_type}\n"
                     f"field name: {field_name}\n"
@@ -168,7 +170,7 @@ class EntityFieldLib:
                     f"template:\n{template}\n"
                     f"buffer before:\n{buffer_bytes.decode('utf-8')}\n"
                     f"buffer after:\n{buffer_bytes.decode('utf-8')}\n"
-                ),
+                ],
                 "debug",
             )
         self.treesitter_lib.save_buffer(
@@ -213,7 +215,7 @@ class EntityFieldLib:
         )
         if debug:
             self.logging.log(
-                (
+                [
                     f"buffer path: {buffer_path}\n"
                     f"field type: {field_type}\n"
                     f"field name: {field_name}\n"
@@ -227,7 +229,7 @@ class EntityFieldLib:
                     f"template:\n{template}\n"
                     f"buffer before:\n{buffer_bytes.decode('utf-8')}\n"
                     f"buffer after:\n{buffer_bytes.decode('utf-8')}\n"
-                ),
+                ],
                 "debug",
             )
         self.treesitter_lib.save_buffer(new_source, buffer_path, True, True)
