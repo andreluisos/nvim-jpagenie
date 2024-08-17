@@ -61,7 +61,15 @@ class JpaRepositoryLib:
             boiler_plate += f"import {id_type_import_path};\n\n"
         boiler_plate += f"public interface {class_name}Repository extends JpaRepository<{class_name}, {id_type}> {{}}"
         if debug:
-            self.logging.log(f"Boiler plate: {boiler_plate}", "debug")
+            self.logging.log(
+                [
+                    f"Class name: {class_name}",
+                    f"Package path: {package_path}",
+                    f"Id type: {id_type}",
+                    f"Boiler plate:\n{boiler_plate}",
+                ],
+                "debug",
+            )
         return boiler_plate
 
     def check_if_id_field_exists(self, buffer_node: Node, debug: bool = False) -> bool:
@@ -71,9 +79,15 @@ class JpaRepositoryLib:
         id_annotation_found = self.treesitter_lib.query_results_has_term(
             results, "Id", debug=debug
         )
-        if not id_annotation_found:
-            return False
-        return True
+        if debug:
+            self.logging.log(
+                [
+                    f"Buffer node: {buffer_node}",
+                    f"ID annotation found: {id_annotation_found}",
+                ],
+                "debug",
+            )
+        return id_annotation_found
 
     def get_superclass_query_node(
         self, buffer_node: Node, debug: bool = False
@@ -81,6 +95,14 @@ class JpaRepositoryLib:
         results = self.treesitter_lib.query_node(
             buffer_node, self.superclass_query, debug=debug
         )
+        if debug:
+            self.logging.log(
+                [
+                    f"Buffer node: {buffer_node}",
+                    f"Superclass query results: {results}",
+                ],
+                "debug",
+            )
         if len(results) == 0:
             return None
         return results[0][0]
@@ -89,53 +111,76 @@ class JpaRepositoryLib:
         self, root_path: Path, superclass_name: str, debug: bool = False
     ) -> Node | None:
         for p in root_path.rglob("*.java"):
-            _node = self.treesitter_lib.get_node_from_path(p, debug=debug)
-            _results = self.treesitter_lib.query_node(
-                _node, self.class_name_query, debug=debug
+            node = self.treesitter_lib.get_node_from_path(p, debug=debug)
+            results = self.treesitter_lib.query_node(
+                node, self.class_name_query, debug=debug
             )
-            if len(_results) == 0:
+            if debug:
+                self.logging.log(
+                    [
+                        f"File path: {p}",
+                        f"Node: {node}",
+                        f"Query results: {results}",
+                    ],
+                    "debug",
+                )
+            if len(results) == 0:
                 continue
-            class_name = self.treesitter_lib.get_node_text(_results[0][0], debug=debug)
+            class_name = self.treesitter_lib.get_node_text(results[0][0], debug=debug)
+            if debug:
+                self.logging.log(
+                    [
+                        f"Class name: {class_name}",
+                    ],
+                    "debug",
+                )
             if class_name == superclass_name:
-                return _node
+                return node
         return None
 
     def find_id_field_type(self, buffer_node: Node, debug: bool = False) -> str | None:
-        child_node = buffer_node.children
-        for child in child_node:
+        child_nodes = buffer_node.children
+        for child in child_nodes:
             if child.type != "class_declaration":
                 self.find_id_field_type(child)
-            else:
-                for c1 in child.children:
-                    if c1.type == "class_body":
-                        for c2 in c1.children:
-                            if c2.type == "field_declaration":
-                                id_field_found = False
-                                for c3 in c2.children:
-                                    # c3 = modifiers, type_identifer and variable_declarator
-                                    if c3.type == "modifiers":
-                                        for c4 in c3.children:
-                                            if c4.type == "marker_annotation":
-                                                for c5 in c4.children:
-                                                    if c5.type == "identifier":
-                                                        if (
-                                                            self.treesitter_lib.get_node_text(
-                                                                c5
-                                                            )
-                                                            == "Id"
-                                                        ):
-                                                            id_field_found = True
-                                    if id_field_found and c3.type == "type_identifier":
-                                        id_field_type = (
-                                            self.treesitter_lib.get_node_text(c3)
-                                        )
-                                        if debug:
-                                            self.logging.log(
-                                                f"Id field type: {id_field_type}",
-                                                "debug",
-                                            )
-                                        return self.treesitter_lib.get_node_text(c3)
-        self.logging.log("Id field type not found", "debug")
+                continue
+            for class_body in child.children:
+                if class_body.type != "class_body":
+                    continue
+                for field_declaration in class_body.children:
+                    if field_declaration.type != "field_declaration":
+                        continue
+                    id_field_found = False
+                    for field_component in field_declaration.children:
+                        if field_component.type == "modifiers":
+                            for modifier in field_component.children:
+                                if modifier.type == "marker_annotation":
+                                    for identifier in modifier.children:
+                                        if identifier.type == "identifier":
+                                            if (
+                                                self.treesitter_lib.get_node_text(
+                                                    identifier
+                                                )
+                                                == "Id"
+                                            ):
+                                                id_field_found = True
+                                                if debug:
+                                                    self.logging.log(
+                                                        "Id field found",
+                                                        "debug",
+                                                    )
+                        if id_field_found and field_component.type == "type_identifier":
+                            id_field_type = self.treesitter_lib.get_node_text(
+                                field_component
+                            )
+                            if debug:
+                                self.logging.log(
+                                    f"Id field type: {id_field_type}",
+                                    "debug",
+                                )
+                            return id_field_type
+        if debug:
+            self.logging.log("Id field type not found", "debug")
         return None
 
     def create_jpa_repository_file(
@@ -146,27 +191,18 @@ class JpaRepositoryLib:
         debug: bool = False,
     ) -> None:
         file_path = buffer_path.parent.joinpath(f"{class_name}Repository.java")
-        if debug:
-            self.logging.log(f"Class name: {class_name}", "debug")
-            self.logging.log(f"JPA repository path: {file_path}", "debug")
-            self.logging.log(f"Boiler plate: {boiler_plate}", "debug")
-        if not file_path.exists():
-            with open(file_path, "w") as java_file:
-                java_file.write(boiler_plate)
-            if file_path.exists():
-                if debug:
-                    self.logging.log(
-                        "Successfuly created JPA repository file.", "debug"
-                    )
-                self.nvim.command(f"edit {file_path}")
-                # TODO: make sure jdtls is in plugin dependencies.
-                self.nvim.command("lua require('jdtls').organize_imports()")
-                return
-        self.logging.log(
-            "Unable to create JPA repository file.",
-            "error",
+        self.treesitter_lib.save_buffer(
+            boiler_plate.encode("utf-8"), file_path, True, True
         )
-        return
+        if debug:
+            self.logging.log(
+                [
+                    f"Class name: {class_name}",
+                    f"JPA repository path: {file_path}",
+                    f"Boiler plate: {boiler_plate}",
+                ],
+                "debug",
+            )
 
     def create_jpa_entity_for_current_buffer(
         self, root_path: Path, debug: bool = False
@@ -176,25 +212,30 @@ class JpaRepositoryLib:
         class_name = self.treesitter_lib.get_node_class_name(node, debug=debug)
         package_path = self.path_lib.get_buffer_package_path(buffer_path, debug=debug)
         if class_name is None:
+            error_msg = "Couldn't find the class name for this buffer"
             self.logging.log(
-                "Couldn't find the class name for this buffer.",
+                error_msg,
                 "error",
             )
-            return
+            raise FileNotFoundError(error_msg)
         if not self.treesitter_lib.is_buffer_jpa_entity(buffer_path):
+            error_msg = "Current buffer isn't a JPA entity"
             self.logging.log(
-                "Current buffer isn't a JPA entity.",
+                error_msg,
                 "error",
             )
-            return
+            raise ValueError(error_msg)
         if not self.check_if_id_field_exists(node, debug=debug):
             superclass_name_node = self.get_superclass_query_node(node, debug=debug)
             if not superclass_name_node:
+                error_msg = (
+                    "No Id found for this entity and no superclass to look for it"
+                )
                 self.logging.log(
-                    "No Id found for this entity and no superclass to look for it.",
+                    error_msg,
                     "error",
                 )
-                return
+                raise ValueError(error_msg)
             superclass_name = self.treesitter_lib.get_node_text(
                 superclass_name_node, debug=debug
             )
@@ -202,25 +243,28 @@ class JpaRepositoryLib:
                 root_path, superclass_name, debug
             )
             if superclass_node is None:
+                error_msg = "Unable to locate the superclass buffer"
                 self.logging.log(
-                    "Unable to locate the superclass buffer.",
+                    error_msg,
                     "error",
                 )
-                return
+                raise ValueError(error_msg)
             if not self.check_if_id_field_exists(superclass_node, debug=debug):
                 # TODO: Keep checking for superclasses?
+                error_msg = "Unable to find the Id field on the superclass"
                 self.logging.log(
-                    "Unable to find the Id field on the superclass.",
+                    error_msg,
                     "error",
                 )
-                return
+                raise ValueError(error_msg)
             id_type = self.find_id_field_type(superclass_node, debug=debug)
             if id_type is None:
+                error_msg = "Unable to find get the Id field type on the superclass"
                 self.logging.log(
-                    "Unable to find get the Id field type on the superclass.",
+                    error_msg,
                     "error",
                 )
-                return
+                raise ValueError(error_msg)
             boiler_plate = self.generate_jpa_repository_template(
                 class_name=class_name,
                 package_path=package_path,
