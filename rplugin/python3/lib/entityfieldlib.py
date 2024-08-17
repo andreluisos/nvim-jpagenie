@@ -190,7 +190,7 @@ class EntityFieldLib:
         debug: bool = False,
     ) -> None:
         new_source: bytes
-        buffer_bytes = self.treesitter_lib.get_buffer_from_path(buffer_path, debug)
+        buffer_bytes = self.treesitter_lib.get_bytes_from_path(buffer_path, debug)
         template = "\n\n" + self.generate_enum_field_template(
             field_type, field_name, enum_type, string_length, nullable, unique, debug
         )

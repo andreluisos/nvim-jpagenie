@@ -55,37 +55,45 @@ class TreesitterLib:
         if organize_imports:
             self.nvim.command("lua require('jdtls').organize_imports()")
         if debug:
-            self.logging.log(f"Buffer: {str(buffer_path)}", "debug")
-            self.logging.log(f"Format: {format}", "debug")
-            self.logging.log(f"Organize imports: {organize_imports}", "debug")
+            self.logging.log(
+                [
+                    f"Buffer:\n{buffer_bytes.decode('utf-8')}",
+                    f"Buffer path: {str(buffer_path)}",
+                    f"Format: {format}",
+                    f"Organize imports: {organize_imports}",
+                ],
+                "debug",
+            )
         self.nvim.command(f"w {str(buffer_path)}")
 
     def is_buffer_main_class(self, buffer_path: Path, debug: bool = False) -> bool:
         buffer_node = self.get_node_from_path(buffer_path, debug)
         results = self.query_node(buffer_node, self.main_class_query, debug)
-        if self.query_results_has_term(results, "SpringBootApplication", debug):
-            if debug:
-                self.logging.log(f"{str(buffer_path)} is the main class", "debug")
-            return True
+        is_main_class = self.query_results_has_term(
+            results, "SpringBootApplication", debug
+        )
         if debug:
-            self.logging.log(f"{str(buffer_path)} is not the main class", "debug")
-        return False
+            self.logging.log(
+                f"{str(buffer_path)} is {'not ' if not is_main_class else ' '}the main class",
+                "debug",
+            )
+        return is_main_class
 
     def is_buffer_jpa_entity(self, buffer_path: Path, debug: bool = False) -> bool:
         buffer_node = self.get_node_from_path(buffer_path)
         results = self.query_node(buffer_node, self.class_annotation_query, debug=debug)
         buffer_is_entity = self.query_results_has_term(results, "Entity", debug=debug)
         if debug:
-            self.logging.log(f"buffer path: {str(buffer_path)}", "debug")
-        if not buffer_is_entity:
-            if debug:
-                self.logging.log("buffer is jpa entity", "debug")
-            return False
-        if debug:
-            self.logging.log("buffer is not jpa entity", "debug")
-        return True
+            self.logging.log(
+                [
+                    f"buffer path: {str(buffer_path)}",
+                    f"Buffer is {'not ' if not buffer_is_entity else ' '}JPA entity",
+                ],
+                "debug",
+            )
+        return buffer_is_entity
 
-    def get_buffer_from_path(self, buffer_path: Path, debug: bool = False) -> bytes:
+    def get_bytes_from_path(self, buffer_path: Path, debug: bool = False) -> bytes:
         if debug:
             self.logging.log(f"Buffer path: {str(buffer_path)}", "debug")
         return buffer_path.read_text(encoding="utf-8").encode("utf-8")
@@ -93,30 +101,35 @@ class TreesitterLib:
     def get_node_from_path(self, buffer_path: Path, debug: bool = False) -> Node:
         if debug:
             self.logging.log(f"Buffer path: {str(buffer_path)}", "debug")
-        buffer = self.get_buffer_from_path(buffer_path, debug=debug)
+        buffer = self.get_bytes_from_path(buffer_path, debug=debug)
         return self.PARSER.parse(buffer).root_node
 
-    def get_node_from_bytes(self, buffer_bytes: bytes) -> Node:
+    def get_node_from_bytes(self, buffer_bytes: bytes, debug: bool = False) -> Node:
+        if debug:
+            self.logging.log(f"Buffer:\n {buffer_bytes.decode('utf-8')}", "debug")
         return self.PARSER.parse(buffer_bytes).root_node
 
-    def get_bytes_from_buffer(self, buffer: Buffer) -> bytes:
-        return "\n".join(buffer[:]).encode("utf-8")
+    def get_bytes_from_buffer(self, buffer: Buffer, debug: bool = False) -> bytes:
+        buffer_bytes = "\n".join(buffer[:]).encode("utf-8")
+        if debug:
+            self.logging.log(f"Buffer:\n{buffer_bytes.decode('utf-8')}", "debug")
+        return buffer_bytes
 
     def get_node_text(self, node: Node, debug: bool = False) -> str:
         node_text = node.text.decode("utf-8") if node.text is not None else ""
         if debug:
-            self.logging.log(f"Returned node text: {node_text}", "debug")
+            self.logging.log(f"Node text: {node_text}", "debug")
         return node_text
 
     def query_node(
         self, node: Node, query: str, debug: bool = False
     ) -> list[tuple[Node, str]]:
-        if debug:
-            self.logging.log(f"Query: {query}", "debug")
         _query = self.JAVA_LANGUAGE.query(query)
         results = _query.captures(node)
         if debug:
-            self.logging.log(f"Returned {len(results)} entries.", "debug")
+            self.logging.log(
+                [f"Query: {query}", f"Returned {len(results)} entries."], "debug"
+            )
         return results
 
     def query_results_has_term(
@@ -139,13 +152,11 @@ class TreesitterLib:
                     return True
             return False
 
-        if debug:
-            self.logging.log(f"Search term: {search_term}", "debug")
         for result in query_results:
             if iterate_nodes(result[0]):
                 return True
         if debug:
-            self.logging.log("Search term is not present.", "debug")
+            self.logging.log(f"Search term {search_term} is not present.", "debug")
         return False
 
     def get_node_class_name(self, node: Node, debug: bool = False) -> str | None:
@@ -155,12 +166,13 @@ class TreesitterLib:
             )
         """
         results = self.query_node(node, class_name_query)
-        if debug:
-            self.logging.log(f"Found {len(results)} entries.", "debug")
         if len(results) == 1:
             class_name = self.get_node_text(results[0][0])
             if debug:
-                self.logging.log(f"Class name: {class_name}", "debug")
+                self.logging.log(
+                    [f"Found {len(results)} entries.", f"Class name: {class_name}"],
+                    "debug",
+                )
             return class_name
         self.logging.log("No class name found", "debug")
         return None
@@ -168,8 +180,6 @@ class TreesitterLib:
     def get_field_type_import_path(
         self, field_type: str, debug: bool = False
     ) -> str | None:
-        if debug:
-            self.logging.log(f"Field type: {field_type}", "debug")
         for type_tuple in self.java_basic_types:
             if field_type == type_tuple[0]:
                 import_path: str = ""
@@ -179,10 +189,13 @@ class TreesitterLib:
                     # For primitive types or when value is None
                     import_path = field_type[0]
                 if debug:
-                    self.logging.log(f"Import path: {import_path}", "debug")
+                    self.logging.log(
+                        [f"Field type: {field_type}", f"Import path: {import_path}"],
+                        "debug",
+                    )
                 return import_path
         if debug:
-            self.logging.log("Field type not found", "debug")
+            self.logging.log(f"Field type {field_type} not found", "debug")
         return None
 
     def insert_code_into_position(
@@ -193,8 +206,9 @@ class TreesitterLib:
             buffer_bytes[:insert_position] + code_bytes + buffer_bytes[insert_position:]
         )
         if debug:
-            self.logging.log(f"Code: {code}", "debug")
-            self.logging.log(f"Insert position: {insert_position}", "debug")
+            self.logging.log(
+                [f"Code: {code}", f"Insert position: {insert_position}"], "debug"
+            )
         return new_source
 
     def insert_import_path_into_buffer(
