@@ -173,9 +173,7 @@ class EntityFieldLib:
                 ],
                 "debug",
             )
-        self.treesitter_lib.save_buffer(
-            new_source, buffer_path, format=True, organize_imports=True
-        )
+        self.treesitter_lib.update_buffer(new_source, buffer_path, False, True, True)
 
     def create_enum_entity_field(
         self,
@@ -232,4 +230,6 @@ class EntityFieldLib:
                 ],
                 "debug",
             )
-        self.treesitter_lib.save_buffer(new_source, buffer_path, True, True)
+            self.treesitter_lib.update_buffer(
+                new_source, buffer_path, False, True, True
+            )

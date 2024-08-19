@@ -90,4 +90,4 @@ class JavaFileLib:
     ) -> None:
         boiler_plate = self.get_boiler_plate(file_type, package_path, file_name, debug)
         file_path = self.get_file_path(main_class_path, package_path, file_name, debug)
-        self.treesitter_lib.save_buffer(boiler_plate, file_path, True, True)
+        self.treesitter_lib.update_buffer(boiler_plate, file_path, False, True, True)

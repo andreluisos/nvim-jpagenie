@@ -40,17 +40,20 @@ class TreesitterLib:
         ) 
         """
 
-    def save_buffer(
+    def update_buffer(
         self,
         buffer_bytes: bytes,
         buffer_path: Path,
-        format: bool = True,
-        organize_imports: bool = True,
+        save: bool = False,
+        format: bool = False,
+        organize_imports: bool = False,
         debug: bool = False,
     ) -> None:
         buffer_path.write_bytes(buffer_bytes)
         self.nvim.command(f"e {str(buffer_path)}")
-        if format:
+        if save:
+            self.nvim.command(f"w {str(buffer_path)}")
+        if format and not save:
             self.nvim.command("lua vim.lsp.buf.format({ async = true })")
         if organize_imports:
             self.nvim.command("lua require('jdtls').organize_imports()")
@@ -64,7 +67,6 @@ class TreesitterLib:
                 ],
                 "debug",
             )
-        self.nvim.command(f"w {str(buffer_path)}")
 
     def is_buffer_main_class(self, buffer_path: Path, debug: bool = False) -> bool:
         buffer_node = self.get_node_from_path(buffer_path, debug)

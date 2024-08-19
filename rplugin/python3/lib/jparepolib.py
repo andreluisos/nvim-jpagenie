@@ -191,8 +191,8 @@ class JpaRepositoryLib:
         debug: bool = False,
     ) -> None:
         file_path = buffer_path.parent.joinpath(f"{class_name}Repository.java")
-        self.treesitter_lib.save_buffer(
-            boiler_plate.encode("utf-8"), file_path, True, True
+        self.treesitter_lib.update_buffer(
+            boiler_plate.encode("utf-8"), file_path, False, True, True
         )
         if debug:
             self.logging.log(
