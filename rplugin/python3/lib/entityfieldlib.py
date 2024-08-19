@@ -91,6 +91,36 @@ class EntityFieldLib:
             self.logging.log(f"template:\n{template}", "debug")
         return template
 
+    def generate_id_field_template(
+        self,
+        field_type: str,
+        field_name: str,
+        id_generation: Literal["none", "auto", "identity", "sequence"],
+        nullable: bool = False,
+        debug: bool = False,
+    ) -> str:
+        template = ""
+        id_body = "@Id\n"
+        generation_body = ""
+        field_template = self.generate_basic_field_template(
+            field_type, field_name, nullable, debug=debug
+        )
+        if id_generation in ["auto", "identity", "sequence"]:
+            generation_body = (
+                f"@GeneratedValue(strategy = GenerationType.{id_generation.upper()})\n"
+            )
+        template += id_body + generation_body + field_template
+        if debug:
+            self.logging.log(
+                [
+                    f"field type: {field_type}, field name: {field_name}, "
+                    f"id generation: {id_generation}, nullable: {nullable}"
+                    f"template:\n{template}"
+                ],
+                "debug",
+            )
+        return template
+
     def generate_enum_field_template(
         self,
         field_type: str,
@@ -116,10 +146,10 @@ class EntityFieldLib:
                 [
                     f"field type: {field_type}, field name: {field_name}, enum type: {enum_type},"
                     f"string length: {string_length}, nullable: {nullable}, unique: {unique}"
+                    f"template:\n{template}"
                 ],
                 "debug",
             )
-            self.logging.log(f"template:\n{template}", "debug")
         return template
 
     def create_basic_entity_field(
@@ -188,7 +218,6 @@ class EntityFieldLib:
         debug: bool = False,
     ) -> None:
         new_source: bytes
-        buffer_bytes = self.treesitter_lib.get_bytes_from_path(buffer_path, debug)
         template = "\n\n" + self.generate_enum_field_template(
             field_type, field_name, enum_type, string_length, nullable, unique, debug
         )
@@ -224,6 +253,66 @@ class EntityFieldLib:
                     f"insert position: {insert_position}\n"
                     f"type import path: {type_import_path}\n"
                     f"enumerated import path: {enumerated_import_path}\n"
+                    f"template:\n{template}\n"
+                    f"buffer before:\n{buffer_bytes.decode('utf-8')}\n"
+                    f"buffer after:\n{buffer_bytes.decode('utf-8')}\n"
+                ],
+                "debug",
+            )
+            self.treesitter_lib.update_buffer(
+                new_source, buffer_path, False, True, True
+            )
+
+    def create_id_entity_field(
+        self,
+        buffer_bytes: bytes,
+        buffer_path: Path,
+        field_type: str,
+        field_name: str,
+        id_generation: Literal["none", "auto", "identity", "sequence"],
+        nullable: bool = False,
+        debug: bool = False,
+    ) -> None:
+        new_source: bytes
+        template = "\n\n" + self.generate_id_field_template(
+            field_type, field_name, id_generation, nullable, debug
+        )
+        insert_position = self.get_field_insert_point(buffer_bytes, debug)
+        new_source = self.treesitter_lib.insert_code_into_position(
+            template, insert_position, buffer_bytes, debug
+        )
+        type_import_path = self.treesitter_lib.get_field_type_import_path(
+            field_type, debug
+        )
+        generated_value_import_path = "jakarta.persistence.GeneratedValue"
+        generation_type_import_path = "jakarta.persistence.GenerationType"
+        id_import_path = "jakarta.persistence.Id"
+        if type_import_path is not None:
+            new_source = self.treesitter_lib.insert_import_path_into_buffer(
+                new_source, type_import_path, debug
+            )
+        new_source = self.treesitter_lib.insert_import_path_into_buffer(
+            new_source, generated_value_import_path, debug
+        )
+        new_source = self.treesitter_lib.insert_import_path_into_buffer(
+            new_source, generation_type_import_path, debug
+        )
+        new_source = self.treesitter_lib.insert_import_path_into_buffer(
+            new_source, id_import_path, debug
+        )
+        if debug:
+            self.logging.log(
+                [
+                    f"buffer path: {buffer_path}\n"
+                    f"field type: {field_type}\n"
+                    f"field name: {field_name}\n"
+                    f"id generation: {id_generation}\n"
+                    f"nullable: {nullable}\n"
+                    f"insert position: {insert_position}\n"
+                    f"type import path: {type_import_path}\n"
+                    f"generated value import path: {generated_value_import_path}\n"
+                    f"generation type import path: {generation_type_import_path}\n"
+                    f"id import path: {id_import_path}\n"
                     f"template:\n{template}\n"
                     f"buffer before:\n{buffer_bytes.decode('utf-8')}\n"
                     f"buffer after:\n{buffer_bytes.decode('utf-8')}\n"

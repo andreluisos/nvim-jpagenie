@@ -54,10 +54,21 @@ class ArgValidator:
             return value
         raise ValueError(f"{value} is not a valid Java basic type.")
 
+    def is_valid_id_field_type(self, value: str) -> str:
+        if value in ["Long", "Integer", "String", "UUID"]:
+            self.convert_to_java_type(value)
+            return value
+        raise ValueError(f"{value} is not a valid Java basic type.")
+
     def is_valid_java_file_name(self, value: str) -> str:
         if value in ["class", "interface", "record", "enum", "annotation"]:
             return value
         raise ValueError(f"{value} is not a valid Java file type")
+
+    def is_valid_id_generation_type(self, value: str) -> str:
+        if value in ["none", "auto", "identity", "sequence"]:
+            return value
+        raise ValueError(f"{value} is not a valid id generation type")
 
     def validate_args_length(self, args: List[str], required_len: int) -> None:
         clean_args = args
@@ -86,6 +97,8 @@ class ArgValidator:
             "enum": self.convert_to_enum,
             "java_type": self.convert_to_java_type,
             "java_file": self.is_valid_java_file_name,
+            "id_gen_type": self.is_valid_id_generation_type,
+            "id_type": self.is_valid_id_field_type,
         }
 
         converted_args = []
