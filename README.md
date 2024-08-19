@@ -9,7 +9,7 @@ I'll be slowly developing it. So, feel free to contribute.
 
 TODO:
 - [x] Create attribute for enties (still need UI)
-- [ ] Create relationship between entities
+- [ ] Create relationship between entities (WIP)
 - [x] Create JPA repository for an entity (still need UI)
 - [x] Create class/enum/interface/annotation/record (still need UI)
 - [ ] Create DTO for an entity 
