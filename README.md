@@ -8,7 +8,7 @@ We can do it using treesitter.
 I'll be slowly developing it. So, feel free to contribute.
 
 TODO:
-- [ ] Create attribute for enties
+- [x] Create attribute for enties (still need UI)
 - [ ] Create relationship between entities
 - [x] Create JPA repository for an entity (still need UI)
 - [x] Create class/enum/interface/annotation/record (still need UI)
