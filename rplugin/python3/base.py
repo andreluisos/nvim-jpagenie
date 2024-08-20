@@ -8,6 +8,7 @@ from lib.javafilelib import JavaFileLib
 from lib.jparepolib import JpaRepositoryLib
 from lib.pathlib import PathLib
 from lib.treesitterlib import TreesitterLib
+from lib.entityrellib import EntityRelationshipLib
 from util.argvalidator import ArgValidator
 from util.logging import Logging
 
@@ -29,4 +30,7 @@ class Base(object):
         )
         self.entity_field_lib = EntityFieldLib(
             self.nvim, self.java_basic_types, self.treesitter_lib, self.logging
+        )
+        self.entity_rel_lib = EntityRelationshipLib(
+            self.nvim, self.treesitter_lib, self.path_lib, self.logging
         )
