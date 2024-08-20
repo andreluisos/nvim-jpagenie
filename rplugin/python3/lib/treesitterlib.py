@@ -4,7 +4,6 @@ import tree_sitter_java as tsjava
 from pynvim.api import Buffer
 from pynvim.api.nvim import Nvim
 from tree_sitter import Language, Node, Parser
-
 from util.logging import Logging
 
 
@@ -13,7 +12,11 @@ class TreesitterLib:
     PARSER = Parser(JAVA_LANGUAGE)
 
     def __init__(
-        self, nvim: Nvim, java_basic_types: list[tuple], cwd: Path, logging: Logging
+        self,
+        nvim: Nvim,
+        java_basic_types: list[tuple],
+        cwd: Path,
+        logging: Logging,
     ):
         self.nvim = nvim
         self.cwd: Path = cwd
