@@ -25,13 +25,20 @@ class EntityRelationshipCommands(Base):
         # arg7 mapping_type (unidirectional_joincolumn | bidirectional_joincolumn)
         # arg8 nullable (bool)
         # arg9 unique (bool)
+        # arg10 collection_type (set | list | collection)
+        # arg11 orphan_removal (bool)
+        # arg12 cascade_persist (bool)
+        # arg13 cascade_merge (bool)
+        # arg14 cascade_remove (bool)
+        # arg15 cascade_refresh (bool)
+        # arg16 cascade_detach (bool)
         attach_debugger: bool = self.arg_validator.attach_debugger(args)
         if attach_debugger:
             self.logging.log(f"args:\n{args}", "debug")
         current_buffer: Buffer = self.nvim.current.buffer
         buffer_bytes = self.treesitter_lib.get_bytes_from_buffer(current_buffer)
         buffer_path = Path(self.nvim.current.buffer.name)
-        self.arg_validator.validate_args_length(args, 11)
+        self.arg_validator.validate_args_length(args, 17)
         validated_args = self.arg_validator.validate_args_type(
             args,
             [
@@ -43,6 +50,13 @@ class EntityRelationshipCommands(Base):
                 "bool",
                 "fetch_type",
                 "mapping_type",
+                "bool",
+                "bool",
+                "collection_type",
+                "bool",
+                "bool",
+                "bool",
+                "bool",
                 "bool",
                 "bool",
             ],
