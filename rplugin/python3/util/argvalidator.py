@@ -75,6 +75,11 @@ class ArgValidator:
             return value
         raise ValueError(f"{value} is not a valid Java file type")
 
+    def is_valid_collection_type(self, value: str) -> str:
+        if value in ["set", "list", "collection"]:
+            return value
+        raise ValueError(f"{value} is not a valid collection type")
+
     def is_valid_id_generation_type(self, value: str) -> str:
         if value in ["none", "auto", "identity", "sequence"]:
             return value
@@ -111,6 +116,7 @@ class ArgValidator:
             "id_type": self.is_valid_id_field_type,
             "mapping_type": self.is_valid_mapping_type,
             "fetch_type": self.is_valid_fetch_type,
+            "collection_type": self.is_valid_collection_type,
         }
 
         converted_args = []
