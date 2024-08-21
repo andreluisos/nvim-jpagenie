@@ -3,7 +3,6 @@ from re import sub
 from typing import Literal
 
 from pynvim.api.nvim import Nvim
-from tree_sitter import Node
 
 from lib.treesitterlib import TreesitterLib
 from util.logging import Logging
@@ -21,45 +20,10 @@ class EntityFieldLib:
         self.treesitter_lib = treesitter_lib
         self.logging = logging
         self.java_basic_types = java_basic_types
-        self.all_field_declarations_query = "(field_declaration) @field"
         self.class_body_query = "(class_body) @body"
 
     def get_available_types(self) -> list[list[str | tuple[str, str | None]]]:
         return [[f"{t[0]} ({t[1]})", t] for t in self.java_basic_types]
-
-    def get_field_insert_point(self, buffer_bytes: bytes, debug: bool = False) -> int:
-        buffer_node = self.treesitter_lib.get_node_from_bytes(buffer_bytes)
-        field_declarations = self.treesitter_lib.query_node(
-            buffer_node, self.all_field_declarations_query, debug
-        )
-        field_declarations_count = len(field_declarations)
-        if field_declarations_count != 0:
-            # != 0 means there are existing field declarations
-            last_field: Node = field_declarations[field_declarations_count - 1][0]
-            position = (last_field.start_byte, last_field.end_byte)
-            if debug:
-                self.logging.log(
-                    f"field_declarations_count: {field_declarations_count}", "debug"
-                )
-                self.logging.log(f"position: {position}", "debug")
-            return position[1]
-        class_body = self.treesitter_lib.query_node(
-            buffer_node, self.class_body_query, debug
-        )
-        if len(class_body) != 1:
-            self.logging.log(
-                "Couldn't find the class declaration.",
-                "error",
-            )
-            raise ValueError("Couldn't find the class declaration.")
-        position = (
-            class_body[0][0].start_byte,
-            class_body[0][0].end_byte,
-        )
-        if debug:
-            self.logging.log(f"class body count: {len(class_body)}", "debug")
-            self.logging.log(f"position: {position}", "debug")
-        return position[0] + 1
 
     def generate_basic_field_template(
         self,
@@ -176,7 +140,9 @@ class EntityFieldLib:
             new_source = self.treesitter_lib.insert_import_path_into_buffer(
                 new_source, type_import_path, debug
             )
-        insert_position = self.get_field_insert_point(new_source, debug)
+        insert_position = self.treesitter_lib.get_entity_field_insert_point(
+            new_source, debug
+        )
         class_body_position = self.treesitter_lib.query_node(
             self.treesitter_lib.get_node_from_bytes(new_source),
             self.class_body_query,
@@ -221,7 +187,9 @@ class EntityFieldLib:
         template = "\n\n" + self.generate_enum_field_template(
             field_type, field_name, enum_type, string_length, nullable, unique, debug
         )
-        insert_position = self.get_field_insert_point(buffer_bytes, debug)
+        insert_position = self.treesitter_lib.get_entity_field_insert_point(
+            buffer_bytes, debug
+        )
         new_source = self.treesitter_lib.insert_code_into_position(
             template, insert_position, buffer_bytes, debug
         )
@@ -277,7 +245,9 @@ class EntityFieldLib:
         template = "\n\n" + self.generate_id_field_template(
             field_type, field_name, id_generation, nullable, debug
         )
-        insert_position = self.get_field_insert_point(buffer_bytes, debug)
+        insert_position = self.treesitter_lib.get_entity_field_insert_point(
+            buffer_bytes, debug
+        )
         new_source = self.treesitter_lib.insert_code_into_position(
             template, insert_position, buffer_bytes, debug
         )

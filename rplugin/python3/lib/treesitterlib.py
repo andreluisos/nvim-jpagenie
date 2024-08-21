@@ -22,6 +22,8 @@ class TreesitterLib:
         self.cwd: Path = cwd
         self.java_basic_types = java_basic_types
         self.logging = logging
+        self.all_field_declarations_query = "(field_declaration) @field"
+        self.class_body_query = "(class_body) @body"
         self.class_declaration_query = "(class_declaration) @class"
         self.class_annotation_query = """
         (class_declaration
@@ -125,6 +127,40 @@ class TreesitterLib:
         if debug:
             self.logging.log(f"Node text: {node_text}", "debug")
         return node_text
+
+    def get_entity_field_insert_point(
+        self, buffer_bytes: bytes, debug: bool = False
+    ) -> int:
+        buffer_node = self.get_node_from_bytes(buffer_bytes)
+        field_declarations = self.query_node(
+            buffer_node, self.all_field_declarations_query, debug
+        )
+        field_declarations_count = len(field_declarations)
+        if field_declarations_count != 0:
+            # != 0 means there are existing field declarations
+            last_field: Node = field_declarations[field_declarations_count - 1][0]
+            position = (last_field.start_byte, last_field.end_byte)
+            if debug:
+                self.logging.log(
+                    f"field_declarations_count: {field_declarations_count}", "debug"
+                )
+                self.logging.log(f"position: {position}", "debug")
+            return position[1]
+        class_body = self.query_node(buffer_node, self.class_body_query, debug)
+        if len(class_body) != 1:
+            self.logging.log(
+                "Couldn't find the class declaration.",
+                "error",
+            )
+            raise ValueError("Couldn't find the class declaration.")
+        position = (
+            class_body[0][0].start_byte,
+            class_body[0][0].end_byte,
+        )
+        if debug:
+            self.logging.log(f"class body count: {len(class_body)}", "debug")
+            self.logging.log(f"position: {position}", "debug")
+        return position[0] + 1
 
     def query_node(
         self, node: Node, query: str, debug: bool = False
