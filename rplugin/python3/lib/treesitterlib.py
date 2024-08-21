@@ -58,10 +58,10 @@ class TreesitterLib:
         self.nvim.command(f"e {str(buffer_path)}")
         if save:
             self.nvim.command(f"w {str(buffer_path)}")
-        if format and not save:
-            self.nvim.command("lua vim.lsp.buf.format({ async = true })")
         if organize_imports:
             self.nvim.command("lua require('jdtls').organize_imports()")
+        if format and not save:
+            self.nvim.command("lua vim.lsp.buf.format({ async = true })")
         if debug:
             self.logging.log(
                 [
