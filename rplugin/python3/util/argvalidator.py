@@ -65,6 +65,11 @@ class ArgValidator:
             return value
         raise ValueError(f"{value} is not a valid mapping type.")
 
+    def is_valid_fetch_type(self, value: str) -> str:
+        if value in ["none", "lazy", "eager"]:
+            return value
+        raise ValueError(f"{value} is not a valid fetch type.")
+
     def is_valid_java_file_name(self, value: str) -> str:
         if value in ["class", "interface", "record", "enum", "annotation"]:
             return value
@@ -105,6 +110,7 @@ class ArgValidator:
             "id_gen_type": self.is_valid_id_generation_type,
             "id_type": self.is_valid_id_field_type,
             "mapping_type": self.is_valid_mapping_type,
+            "fetch_type": self.is_valid_fetch_type,
         }
 
         converted_args = []
