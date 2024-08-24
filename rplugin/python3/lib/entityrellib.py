@@ -39,6 +39,50 @@ class EntityRelationshipLib:
             )
         return pluralized_word
 
+    def process_cascades_params(
+        self,
+        cascade_persist: bool,
+        cascade_merge: bool,
+        cascade_remove: bool,
+        cascade_refresh: bool,
+        cascade_detach: bool,
+        debug: bool = False,
+    ) -> Optional[str]:
+        cascades: List[str] = []
+        cascade_param: str
+        if cascade_persist:
+            cascades.append("PERSIST")
+        if cascade_merge:
+            cascades.append("MERGE")
+        if cascade_remove:
+            cascades.append("REMOVE")
+        if cascade_refresh:
+            cascades.append("REFRESH")
+        if cascade_detach:
+            cascades.append("DETACH")
+        if len(cascades) == 5:
+            cascade_param = "cascade = CascadeType.ALL"
+        elif len(cascades) == 1:
+            cascade_param = f"cascade = CascadeType.{cascades[0]}"
+        else:
+            cascade_param = (
+                f"cascade = {{{', '.join([f'CascadeType.{c}' for c in cascades])}}}"
+            )
+        if debug:
+            self.logging.log(
+                [
+                    f"Persist: {cascade_persist}",
+                    f"Merge: {cascade_merge}",
+                    f"Remove: {cascade_remove}",
+                    f"Refresh: {cascade_refresh}",
+                    f"Detach: {cascade_detach}",
+                    f"Cascades: {', '.join(cascades)}",
+                    f"Cascade param: {cascade_param}",
+                ],
+                "debug",
+            )
+        return cascade_param
+
     def proccess_collection_type(
         self, collection_type: str, debug: bool = False
     ) -> Tuple[str, str]:
@@ -102,51 +146,6 @@ class EntityRelationshipLib:
             self.logging.log(error_msg, "error")
             raise FileNotFoundError(error_msg)
         return related_entities
-
-    def process_cascades_params(
-        self,
-        cascade_persist: bool,
-        cascade_merge: bool,
-        cascade_remove: bool,
-        cascade_refresh: bool,
-        cascade_detach: bool,
-        debug: bool = False,
-    ) -> Optional[str]:
-        cascades: List[str] = []
-        cascade_param: str
-        if cascade_persist:
-            cascades.append("PERSIST")
-        if cascade_merge:
-            cascades.append("MERGE")
-        if cascade_remove:
-            cascades.append("REMOVE")
-        if cascade_refresh:
-            cascades.append("REFRESH")
-        if cascade_detach:
-            cascades.append("DETACH")
-        if len(cascades) == 5:
-            cascade_param = "cascade = CascadeType.ALL"
-        elif len(cascades) == 1:
-            cascade_param = f"cascade = CascadeType.{cascades[0]}"
-        else:
-            cascade_param = (
-                f"cascade = {{{', '.join([f'CascadeType.{c}' for c in cascades])}}}"
-            )
-        if debug:
-            self.logging.log(
-                [
-                    f"Persist: {cascade_persist}",
-                    f"Merge: {cascade_merge}",
-                    f"Remove: {cascade_remove}",
-                    f"Refresh: {cascade_refresh}",
-                    f"Detach: {cascade_detach}",
-                    f"Cascades: {', '.join(cascades)}",
-                    f"Cascade param: {cascade_param}",
-                ],
-                "debug",
-            )
-
-        return cascade_param
 
     def generate_field_name(
         self, field_type: str, plural: bool = False, debug: bool = False
