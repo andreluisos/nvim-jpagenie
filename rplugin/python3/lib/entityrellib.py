@@ -83,6 +83,48 @@ class EntityRelationshipLib:
             )
         return cascade_param
 
+    def process_extra_params(
+        self,
+        nullable: Optional[bool] = None,
+        optional: Optional[bool] = None,
+        unique: Optional[bool] = None,
+        orphan_removal: Optional[bool] = None,
+        fetch: Optional[str] = None,
+        name: Optional[str] = None,
+        mapped_by: Optional[str] = None,
+        debug: bool = False,
+    ) -> str:
+        params: List[str] = []
+        if name is not None:
+            params.append(f'name = "{name}"')
+        if mapped_by is not None:
+            params.append(f'mappedBy = "{mapped_by}"')
+        if nullable is not None:
+            params.append(f"nullable = {str(nullable).lower()}")
+        if optional is not None:
+            params.append(f"optional = {str(optional).lower()}")
+        if unique is not None:
+            params.append(f"unique = {str(unique).lower()}")
+        if orphan_removal is not None:
+            params.append(f"orphanRemoval = {str(orphan_removal).lower()}")
+        if fetch is not None:
+            params.append(f"fetch = FetchType.{fetch.upper()}")
+        joined_params = ", ".join(params)
+        if debug:
+            self.logging.log(
+                [
+                    f"Nullable: {nullable}",
+                    f"Optional: {optional}",
+                    f"Orphan removal: {orphan_removal}",
+                    f"Fetch: {fetch}",
+                    f"Name: {name}",
+                    f"MappedBy: {mapped_by}",
+                    f"Params body: {joined_params}",
+                ],
+                "debug",
+            )
+        return joined_params
+
     def proccess_collection_type(
         self, collection_type: str, debug: bool = False
     ) -> Tuple[str, str]:
@@ -184,6 +226,7 @@ class EntityRelationshipLib:
         debug: bool = False,
     ) -> str:
         body = "@OneToMany"
+        params: List[str] = []
         cascade_param: Optional[str] = self.process_cascades_params(
             cascade_persist,
             cascade_merge,
@@ -192,14 +235,16 @@ class EntityRelationshipLib:
             cascade_detach,
             debug,
         )
-        params: List[str] = [
-            f'mappedBy = "{self.generated_snaked_field_name(one_field_type)}"'
-        ]
+        extra_params: str = self.process_extra_params(
+            orphan_removal=True,
+            mapped_by=self.generated_snaked_field_name(one_field_type),
+            debug=debug,
+        )
+        params.append(extra_params)
         if cascade_param:
             params.append(cascade_param)
-        if orphan_removal:
-            params.append("orphanRemoval = true")
-        body += "(" + ", ".join(params) + ")"
+        if len(params) > 0:
+            body += "(" + ", ".join(params) + ")"
         if debug:
             self.logging.log(
                 [
@@ -221,10 +266,11 @@ class EntityRelationshipLib:
         cascade_remove: bool,
         cascade_refresh: bool,
         cascade_detach: bool,
-        nullable: bool,
+        optional: bool,
         debug: bool = False,
     ):
         body = "@ManyToOne"
+        params: List[str] = []
         cascade_param: Optional[str] = self.process_cascades_params(
             cascade_persist,
             cascade_merge,
@@ -233,9 +279,12 @@ class EntityRelationshipLib:
             cascade_detach,
             debug,
         )
-        params: List[str] = []
-        if fetch_type != "none":
-            params.append(f"fetch = FetchType.{fetch_type.upper()}")
+        extra_params: str = self.process_extra_params(
+            fetch=fetch_type if fetch_type != "none" else None,
+            optional=optional,
+            debug=debug,
+        )
+        params.append(extra_params)
         if cascade_param:
             params.append(cascade_param)
         if len(params) > 0:
@@ -244,7 +293,7 @@ class EntityRelationshipLib:
             self.logging.log(
                 [
                     f"Params: {', '.join(params)}",
-                    f"Optional: {nullable}",
+                    f"Optional: {optional}",
                     f"Body: {body}",
                 ],
                 "debug",
@@ -258,22 +307,21 @@ class EntityRelationshipLib:
         unique: bool,
         debug: bool = False,
     ) -> str:
-        body = "@JoinColumn("
+        body = "@JoinColumn"
         snaked_field_name = self.generated_snaked_field_name(
             inverse_side_field_type, debug
         )
-        body += f'name = "{snaked_field_name}"'
-        if nullable:
-            body += ", nullable = true"
-        if unique:
-            body += ", unique = true"
-        body += ")"
+        extra_params = self.process_extra_params(
+            name=snaked_field_name, nullable=nullable, unique=unique, debug=debug
+        )
+        body += "(" + extra_params + ")"
         if debug:
             self.logging.log(
                 [
                     f"Snaked field name: {inverse_side_field_type}",
                     f"Nullable: {nullable}",
                     f"Unique: {unique}",
+                    f"Body: {body}",
                 ],
                 "debug",
             )
