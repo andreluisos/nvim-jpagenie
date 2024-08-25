@@ -1,6 +1,6 @@
 from pathlib import Path
 from re import sub
-from typing import Literal
+from typing import List, Literal
 
 from pynvim.api.nvim import Nvim
 
@@ -130,15 +130,15 @@ class EntityFieldLib:
         template = "\n\n" + self.generate_basic_field_template(
             field_type, field_name, nullable, unique, large_object, debug
         )
-        new_source = self.treesitter_lib.insert_import_path_into_buffer(
-            buffer_bytes, "jakarta.persistence.Column", debug
+        new_source = self.treesitter_lib.insert_import_paths_into_buffer(
+            buffer_bytes, ["jakarta.persistence.Column"], debug
         )
         type_import_path = self.treesitter_lib.get_field_type_import_path(
             field_type, debug
         )
         if type_import_path:
-            new_source = self.treesitter_lib.insert_import_path_into_buffer(
-                new_source, type_import_path, debug
+            new_source = self.treesitter_lib.insert_import_paths_into_buffer(
+                new_source, [type_import_path], debug
             )
         insert_position = self.treesitter_lib.get_entity_field_insert_point(
             new_source, debug
@@ -187,6 +187,10 @@ class EntityFieldLib:
         template = "\n\n" + self.generate_enum_field_template(
             field_type, field_name, enum_type, string_length, nullable, unique, debug
         )
+        importings: List[str] = [
+            "jakarta.persistence.Enumerated",
+            "jakarta.persistence.EnumType",
+        ]
         insert_position = self.treesitter_lib.get_entity_field_insert_point(
             buffer_bytes, debug
         )
@@ -196,17 +200,10 @@ class EntityFieldLib:
         type_import_path = self.treesitter_lib.get_field_type_import_path(
             field_type, debug
         )
-        enumerated_import_path = "jakarta.persistence.Enumerated"
-        enumtype_import_path = "jakarta.persistence.EnumType"
         if type_import_path is not None:
-            new_source = self.treesitter_lib.insert_import_path_into_buffer(
-                new_source, type_import_path, debug
-            )
-        new_source = self.treesitter_lib.insert_import_path_into_buffer(
-            new_source, enumerated_import_path, debug
-        )
-        new_source = self.treesitter_lib.insert_import_path_into_buffer(
-            new_source, enumtype_import_path, debug
+            importings.append(type_import_path)
+        new_source = self.treesitter_lib.insert_import_paths_into_buffer(
+            new_source, importings, debug
         )
         if debug:
             self.logging.log(
@@ -219,8 +216,9 @@ class EntityFieldLib:
                     f"nullable: {nullable}\n"
                     f"unique: {unique}\n"
                     f"insert position: {insert_position}\n"
-                    f"type import path: {type_import_path}\n"
-                    f"enumerated import path: {enumerated_import_path}\n"
+                    f"type import path: {importings[2] if len(importings) >=2 else None}\n"
+                    f"enumerated import path: {importings[0]}\n"
+                    f"enumtype import path: {importings[1]}\n"
                     f"template:\n{template}\n"
                     f"buffer before:\n{buffer_bytes.decode('utf-8')}\n"
                     f"buffer after:\n{buffer_bytes.decode('utf-8')}\n"
@@ -242,6 +240,11 @@ class EntityFieldLib:
         debug: bool = False,
     ) -> None:
         new_source: bytes
+        importings: List[str] = [
+            "jakarta.persistence.GeneratedValue",
+            "jakarta.persistence.GenerationType",
+            "jakarta.persistence.Id",
+        ]
         template = "\n\n" + self.generate_id_field_template(
             field_type, field_name, id_generation, nullable, debug
         )
@@ -254,21 +257,10 @@ class EntityFieldLib:
         type_import_path = self.treesitter_lib.get_field_type_import_path(
             field_type, debug
         )
-        generated_value_import_path = "jakarta.persistence.GeneratedValue"
-        generation_type_import_path = "jakarta.persistence.GenerationType"
-        id_import_path = "jakarta.persistence.Id"
         if type_import_path is not None:
-            new_source = self.treesitter_lib.insert_import_path_into_buffer(
-                new_source, type_import_path, debug
-            )
-        new_source = self.treesitter_lib.insert_import_path_into_buffer(
-            new_source, generated_value_import_path, debug
-        )
-        new_source = self.treesitter_lib.insert_import_path_into_buffer(
-            new_source, generation_type_import_path, debug
-        )
-        new_source = self.treesitter_lib.insert_import_path_into_buffer(
-            new_source, id_import_path, debug
+            importings.append(type_import_path)
+        new_source = self.treesitter_lib.insert_import_paths_into_buffer(
+            new_source, importings, debug
         )
         if debug:
             self.logging.log(
@@ -279,10 +271,10 @@ class EntityFieldLib:
                     f"id generation: {id_generation}\n"
                     f"nullable: {nullable}\n"
                     f"insert position: {insert_position}\n"
-                    f"type import path: {type_import_path}\n"
-                    f"generated value import path: {generated_value_import_path}\n"
-                    f"generation type import path: {generation_type_import_path}\n"
-                    f"id import path: {id_import_path}\n"
+                    f"type import path: {importings[3] if len(importings) >=3 else None}\n"
+                    f"generated value import path: {importings[0]}\n"
+                    f"generation type import path: {importings[1]}\n"
+                    f"id import path: {importings[2]}\n"
                     f"template:\n{template}\n"
                     f"buffer before:\n{buffer_bytes.decode('utf-8')}\n"
                     f"buffer after:\n{buffer_bytes.decode('utf-8')}\n"

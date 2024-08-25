@@ -1,4 +1,5 @@
 from pathlib import Path
+from typing import List
 
 import tree_sitter_java as tsjava
 from pynvim.api import Buffer
@@ -252,28 +253,31 @@ class TreesitterLib:
             )
         return new_source
 
-    def insert_import_path_into_buffer(
-        self, buffer_bytes: bytes, import_path: str, debug: bool = False
+    def insert_import_paths_into_buffer(
+        self, buffer_bytes: bytes, import_paths: List[str], debug: bool = False
     ) -> bytes:
         buffer_node = self.get_node_from_bytes(buffer_bytes)
-        insert_position: int
-        import_declarations = self.query_node(
-            buffer_node, self.import_declarations_query, debug
-        )
-        if len(import_declarations) > 0:
-            insert_position = import_declarations[len(import_declarations) - 1][
-                0
-            ].end_byte
-        else:
-            class_declaration = self.query_node(
-                buffer_node, self.class_declaration_query, debug
+        updated_buffer_bytes: bytes = buffer_bytes
+        for import_path in import_paths:
+            insert_position: int
+            import_declarations = self.query_node(
+                buffer_node, self.import_declarations_query, debug
             )
-            if len(class_declaration) != 1:
-                error_msg = "Unable to query class declaration"
-                self.logging.log(error_msg, "error")
-                raise ValueError(error_msg)
-            insert_position = class_declaration[0][0].start_byte
-        template = f"\nimport {import_path};\n\n"
-        return self.insert_code_into_position(
-            template, insert_position, buffer_bytes, debug
-        )
+            if len(import_declarations) > 0:
+                insert_position = import_declarations[len(import_declarations) - 1][
+                    0
+                ].end_byte
+            else:
+                class_declaration = self.query_node(
+                    buffer_node, self.class_declaration_query, debug
+                )
+                if len(class_declaration) != 1:
+                    error_msg = "Unable to query class declaration"
+                    self.logging.log(error_msg, "error")
+                    raise ValueError(error_msg)
+                insert_position = class_declaration[0][0].start_byte
+            template = f"\nimport {import_path};\n"
+            updated_buffer_bytes = self.insert_code_into_position(
+                template, insert_position, updated_buffer_bytes, debug
+            )
+        return updated_buffer_bytes

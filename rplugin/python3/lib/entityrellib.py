@@ -20,6 +20,7 @@ class EntityRelationshipLib:
         self.treesitter_lib = treesitter_lib
         self.path_lib = path_lib
         self.logging = logging
+        self.importings: List[str] = []
 
     def pluralize(self, word: str, debug: bool = False) -> str:
         pluralized_word: str
@@ -38,6 +39,13 @@ class EntityRelationshipLib:
                 [f"Word: {word}", f"Pluralized word: {pluralized_word}"], "debug"
             )
         return pluralized_word
+
+    def add_imports_to_buffer(self, buffer_bytes: bytes, debug: bool) -> bytes:
+        updated_buffer_bytes = self.treesitter_lib.insert_import_paths_into_buffer(
+            buffer_bytes, self.importings, debug
+        )
+        self.importings = []
+        return updated_buffer_bytes
 
     def process_cascades_params(
         self,
@@ -68,6 +76,8 @@ class EntityRelationshipLib:
             cascade_param = (
                 f"cascade = {{{', '.join([f'CascadeType.{c}' for c in cascades])}}}"
             )
+        if "jakarta.persistence.CascadeType" not in self.importings:
+            self.importings.append("jakarta.persistence.CascadeType")
         if debug:
             self.logging.log(
                 [
@@ -109,6 +119,8 @@ class EntityRelationshipLib:
             params.append(f"orphanRemoval = {str(orphan_removal).lower()}")
         if fetch is not None:
             params.append(f"fetch = FetchType.{fetch.upper()}")
+            if "jakarta.persistence.FetchType" not in self.importings:
+                self.importings.append("jakarta.persistence.FetchType")
         joined_params = ", ".join(params)
         if debug:
             self.logging.log(
@@ -245,6 +257,8 @@ class EntityRelationshipLib:
             params.append(cascade_param)
         if len(params) > 0:
             body += "(" + ", ".join(params) + ")"
+        if "jakarta.persistence.OneToMany" not in self.importings:
+            self.importings.append("jakarta.persistence.OneToMany")
         if debug:
             self.logging.log(
                 [
@@ -289,6 +303,8 @@ class EntityRelationshipLib:
             params.append(cascade_param)
         if len(params) > 0:
             body += "(" + ", ".join(params) + ")"
+        if "jakarta.persistence.ManyToOne" not in self.importings:
+            self.importings.append("jakarta.persistence.ManyToOne")
         if debug:
             self.logging.log(
                 [
@@ -315,6 +331,8 @@ class EntityRelationshipLib:
             name=snaked_field_name, nullable=nullable, unique=unique, debug=debug
         )
         body += "(" + extra_params + ")"
+        if "jakarta.persistence.JoinColumn" not in self.importings:
+            self.importings.append("jakarta.persistence.JoinColumn")
         if debug:
             self.logging.log(
                 [
@@ -340,6 +358,21 @@ class EntityRelationshipLib:
         field_name = self.generate_field_name(
             field_type, True if is_collection else False, debug
         )
+        if collection_type == "set":
+            if "java.util.Set" not in self.importings:
+                self.importings.append("java.util.Set")
+            if "java.util.HashSet" not in self.importings:
+                self.importings.append("java.util.HashSet")
+        if collection_type == "List":
+            if "java.util.List" not in self.importings:
+                self.importings.append("java.util.List")
+            if "java.util.ArrayList" not in self.importings:
+                self.importings.append("java.util.ArrayList")
+        if collection_type == "Collection":
+            if "java.util.Collection" not in self.importings:
+                self.importings.append("java.util.Collection")
+            if "java.util.ArrayList" not in self.importings:
+                self.importings.append("java.util.ArrayList")
         body = (
             f"private {collection_name}"
             f"{'<' if is_collection else ''}{field_type}{'>' if is_collection else ''} "
@@ -477,14 +510,17 @@ class EntityRelationshipLib:
                 owning_side_buffer_bytes, debug
             )
         )
-        owning_side_field_bytes = self.treesitter_lib.insert_code_into_position(
+        owning_side_buffer_bytes = self.treesitter_lib.insert_code_into_position(
             owning_side_field_template,
             owning_side_field_insert_point,
             owning_side_buffer_bytes,
             debug,
         )
+        owning_side_buffer_bytes = self.add_imports_to_buffer(
+            owning_side_buffer_bytes, debug
+        )
         self.treesitter_lib.update_buffer(
-            owning_side_field_bytes, owning_side_buffer_path, False, True, True, debug
+            owning_side_buffer_bytes, owning_side_buffer_path, False, True, True, debug
         )
         if mapping_type == "bidirectional_joincolumn":
             inverse_side_buffer_bytes = self.treesitter_lib.get_bytes_from_path(
@@ -507,14 +543,17 @@ class EntityRelationshipLib:
                     inverse_side_buffer_bytes, debug
                 )
             )
-            one_side_field_bytes = self.treesitter_lib.insert_code_into_position(
+            inverse_side_buffer_bytes = self.treesitter_lib.insert_code_into_position(
                 inverse_side_field_template,
                 inverse_side_field_insert_point,
                 inverse_side_buffer_bytes,
                 debug,
             )
+            inverse_side_buffer_bytes = self.add_imports_to_buffer(
+                inverse_side_buffer_bytes, debug
+            )
             self.treesitter_lib.update_buffer(
-                one_side_field_bytes,
+                inverse_side_buffer_bytes,
                 related_entities["inverse_side"][1],
                 False,
                 True,
