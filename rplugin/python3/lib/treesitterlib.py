@@ -1,5 +1,5 @@
 from pathlib import Path
-from typing import List
+from typing import List, Optional
 
 import tree_sitter_java as tsjava
 from pynvim.api import Buffer
@@ -201,12 +201,29 @@ class TreesitterLib:
             self.logging.log(f"Search term {search_term} is not present.", "debug")
         return False
 
-    def get_node_class_name(self, node: Node, debug: bool = False) -> str | None:
+    def get_buffer_class_name(
+        self,
+        buffer: Node | Path | bytes,
+        debug: bool = False,
+    ) -> str | None:
         class_name_query = """
         (class_declaration
             name: (identifier) @class_name
             )
         """
+        node: Optional[Node] = None
+        if isinstance(buffer, Node):
+            node = buffer
+        if isinstance(buffer, Path):
+            node = self.get_node_from_path(
+                buffer,
+            )
+        if isinstance(buffer, bytes):
+            node = self.get_node_from_bytes(buffer, debug)
+        if node is None:
+            error_msg = "Something went wrong"
+            self.logging.log(error_msg, "error")
+            raise ValueError(error_msg)
         results = self.query_node(node, class_name_query)
         if len(results) == 1:
             class_name = self.get_node_text(results[0][0])

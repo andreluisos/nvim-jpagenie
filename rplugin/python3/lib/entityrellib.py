@@ -164,7 +164,7 @@ class EntityRelationshipLib:
             if self.treesitter_lib.is_buffer_jpa_entity(p, debug):
                 entity_path = p
                 entity_node = self.treesitter_lib.get_node_from_path(p, debug)
-                entity_name = self.treesitter_lib.get_node_class_name(
+                entity_name = self.treesitter_lib.get_buffer_class_name(
                     entity_node, debug
                 )
                 if entity_name:
@@ -175,31 +175,41 @@ class EntityRelationshipLib:
             )
         return entities_found
 
-    def get_bidirectional_buffer_data(
+    def get_entity_data_by_class_name(
         self,
-        owning_side_buffer_path: Path,
-        inverse_side_type: str,
+        class_name: str,
         debug: bool = False,
-    ) -> Dict[str, Tuple[str, Path]]:
+    ) -> Tuple[str, Path]:
         all_entities = self.get_all_jpa_entities(debug)
-        related_entities: Dict[str, Tuple[str, Path]] = {}
+        found_entity: Optional[Tuple[str, Path]] = None
         for entity in all_entities:
-            entity_path = all_entities[entity]
-            if owning_side_buffer_path == entity_path:
-                related_entities["owning_side"] = (entity, entity_path)
-            if entity == inverse_side_type:
-                related_entities["inverse_side"] = (entity, entity_path)
+            if entity == class_name:
+                found_entity = (entity, all_entities[entity])
         if debug:
-            self.logging.log(f"Buffer data: {str(related_entities)}", "debug")
-        if "owning_side" not in related_entities:
-            error_msg = f"{related_entities['inverse_side']} is not a valid entity"
+            self.logging.log(f"Buffer data: {str(found_entity)}", "debug")
+        if not found_entity:
+            error_msg = f"No entity called {class_name} was found"
             self.logging.log(error_msg, "error")
             raise FileNotFoundError(error_msg)
-        if "inverse_side" not in related_entities:
-            error_msg = "Couldn't process currenty entity"
+        return found_entity
+
+    def get_entity_data_by_path(
+        self,
+        buffer_path: Path,
+        debug: bool = False,
+    ) -> Tuple[str, Path]:
+        all_entities = self.get_all_jpa_entities(debug)
+        found_entity: Optional[Tuple[str, Path]] = None
+        for entity in all_entities:
+            if entity[1] == buffer_path:
+                found_entity = (entity, all_entities[entity])
+        if debug:
+            self.logging.log(f"Buffer data: {str(found_entity)}", "debug")
+        if not found_entity:
+            error_msg = f"No entity with path {str(buffer_path)} was found"
             self.logging.log(error_msg, "error")
             raise FileNotFoundError(error_msg)
-        return related_entities
+        return found_entity
 
     def generate_field_name(
         self, field_type: str, plural: bool = False, debug: bool = False
@@ -465,98 +475,107 @@ class EntityRelationshipLib:
             self.logging.log(complete_field_body, "debug")
         return complete_field_body
 
-    def create_many_to_one_relationship(
+    def create_many_to_one_relationship_field(
         self,
         owning_side_buffer_bytes: bytes,
         owning_side_buffer_path: Path,
         inverse_side_type: str,
-        owning_side_cascade_persist: bool,
-        owning_side_cascade_merge: bool,
-        owning_side_cascade_remove: bool,
-        owning_side_cascade_refresh: bool,
-        owning_side_cascade_detach: bool,
+        cascade_persist: bool,
+        cascade_merge: bool,
+        cascade_remove: bool,
+        cascade_refresh: bool,
+        cascade_detach: bool,
         fetch_type: str,
-        mapping_type: str,
-        nullable: bool,
+        mandatory: bool,
         unique: bool,
-        collection_type: str,
-        orphan_removal: bool,
-        inverse_side_cascade_persist: bool,
-        inverse_side_cascade_merge: bool,
-        inverse_side_cascade_remove: bool,
-        inverse_side_cascade_refresh: bool,
-        inverse_side_cascade_detach: bool,
         debug: bool = False,
     ):
-        related_entities: Dict[str, Tuple[str, Path]] = (
-            self.get_bidirectional_buffer_data(
-                owning_side_buffer_path, inverse_side_type, debug
-            )
+        inverse_side_entity_data: Tuple[str, Path] = self.get_entity_data_by_class_name(
+            inverse_side_type, debug
         )
-        owning_side_field_template = self.generate_many_to_one_template(
-            related_entities["inverse_side"][0],
+        field_template = self.generate_many_to_one_template(
+            inverse_side_entity_data[0],
             fetch_type,
-            owning_side_cascade_persist,
-            owning_side_cascade_merge,
-            owning_side_cascade_remove,
-            owning_side_cascade_refresh,
-            owning_side_cascade_detach,
-            nullable,
+            cascade_persist,
+            cascade_merge,
+            cascade_remove,
+            cascade_refresh,
+            cascade_detach,
+            mandatory,
             unique,
             debug,
         )
-        owning_side_field_insert_point = (
-            self.treesitter_lib.get_entity_field_insert_point(
-                owning_side_buffer_bytes, debug
-            )
+        field_insert_point = self.treesitter_lib.get_entity_field_insert_point(
+            owning_side_buffer_bytes, debug
         )
-        owning_side_buffer_bytes = self.treesitter_lib.insert_code_into_position(
-            owning_side_field_template,
-            owning_side_field_insert_point,
+        buffer_bytes = self.treesitter_lib.insert_code_into_position(
+            field_template,
+            field_insert_point,
             owning_side_buffer_bytes,
             debug,
         )
-        owning_side_buffer_bytes = self.add_imports_to_buffer(
-            owning_side_buffer_bytes, debug
-        )
+        buffer_bytes = self.add_imports_to_buffer(buffer_bytes, debug)
         self.treesitter_lib.update_buffer(
-            owning_side_buffer_bytes, owning_side_buffer_path, False, True, True, debug
+            buffer_bytes, owning_side_buffer_path, False, True, True, debug
         )
-        if mapping_type == "bidirectional_joincolumn":
-            inverse_side_buffer_bytes = self.treesitter_lib.get_bytes_from_path(
-                related_entities["inverse_side"][1], debug
-            )
-            inverse_side_field_template = self.generate_one_to_many_template(
-                related_entities["owning_side"][0],
-                related_entities["inverse_side"][0],
-                inverse_side_cascade_persist,
-                inverse_side_cascade_merge,
-                inverse_side_cascade_remove,
-                inverse_side_cascade_refresh,
-                inverse_side_cascade_detach,
-                orphan_removal,
-                collection_type,
-                debug,
-            )
-            inverse_side_field_insert_point = (
-                self.treesitter_lib.get_entity_field_insert_point(
-                    inverse_side_buffer_bytes, debug
-                )
-            )
-            inverse_side_buffer_bytes = self.treesitter_lib.insert_code_into_position(
-                inverse_side_field_template,
-                inverse_side_field_insert_point,
-                inverse_side_buffer_bytes,
-                debug,
-            )
-            inverse_side_buffer_bytes = self.add_imports_to_buffer(
+
+    def create_one_to_many_relationship_field(
+        self,
+        owning_side_buffer_path: Path,
+        inverse_side_field_type: str,
+        collection_type: str,
+        orphan_removal: bool,
+        cascade_persist: bool,
+        cascade_merge: bool,
+        cascade_remove: bool,
+        cascade_refresh: bool,
+        cascade_detach: bool,
+        debug: bool = False,
+    ):
+        owning_side_entity_name = self.treesitter_lib.get_buffer_class_name(
+            owning_side_buffer_path, debug
+        )
+        if owning_side_entity_name is None:
+            error_msg = "Unable to find owning side entity data"
+            self.logging.log(error_msg, "error")
+            raise FileNotFoundError(error_msg)
+        inverse_side_entity_data: Tuple[str, Path] = self.get_entity_data_by_class_name(
+            inverse_side_field_type, debug
+        )
+        inverse_side_buffer_bytes = self.treesitter_lib.get_bytes_from_path(
+            inverse_side_entity_data[1], debug
+        )
+        inverse_side_field_template = self.generate_one_to_many_template(
+            owning_side_entity_name,
+            inverse_side_entity_data[0],
+            cascade_persist,
+            cascade_merge,
+            cascade_remove,
+            cascade_refresh,
+            cascade_detach,
+            orphan_removal,
+            collection_type,
+            debug,
+        )
+        inverse_side_field_insert_point = (
+            self.treesitter_lib.get_entity_field_insert_point(
                 inverse_side_buffer_bytes, debug
             )
-            self.treesitter_lib.update_buffer(
-                inverse_side_buffer_bytes,
-                related_entities["inverse_side"][1],
-                False,
-                True,
-                True,
-                debug,
-            )
+        )
+        inverse_side_buffer_bytes = self.treesitter_lib.insert_code_into_position(
+            inverse_side_field_template,
+            inverse_side_field_insert_point,
+            inverse_side_buffer_bytes,
+            debug,
+        )
+        inverse_side_buffer_bytes = self.add_imports_to_buffer(
+            inverse_side_buffer_bytes, debug
+        )
+        self.treesitter_lib.update_buffer(
+            inverse_side_buffer_bytes,
+            inverse_side_entity_data[1],
+            False,
+            True,
+            True,
+            debug,
+        )

@@ -14,31 +14,23 @@ class EntityRelationshipCommands(Base):
         super().__init__(nvim)
 
     @command("CreateManyToOneRelationship", nargs="*")
-    def generate_id_entity_field(self, args: List[str]) -> None:
-        # arg0 field_type (str)
+    def create_many_to_one_relationship(self, args: List[str]) -> None:
+        # arg0 inverse_field_type (str)
         # arg1 cascade_persist (bool)
         # arg2 cascade_merge (bool)
         # arg3 cascade_remove (bool)
         # arg4 cascade_refresh (bool)
         # arg5 cascade_detach (bool)
         # arg6 fetch_type (none | lazy | eager)
-        # arg7 mapping_type (unidirectional_joincolumn | bidirectional_joincolumn)
-        # arg8 nullable (bool)
-        # arg9 unique (bool)
-        # arg10 collection_type (set | list | collection)
-        # arg11 orphan_removal (bool)
-        # arg12 cascade_persist (bool)
-        # arg13 cascade_merge (bool)
-        # arg14 cascade_remove (bool)
-        # arg15 cascade_refresh (bool)
-        # arg16 cascade_detach (bool)
+        # arg7 mandatory (bool)
+        # arg8 unique (bool)
         attach_debugger: bool = self.arg_validator.attach_debugger(args)
         if attach_debugger:
             self.logging.log(f"args:\n{args}", "debug")
         current_buffer: Buffer = self.nvim.current.buffer
         buffer_bytes = self.treesitter_lib.get_bytes_from_buffer(current_buffer)
         buffer_path = Path(self.nvim.current.buffer.name)
-        self.arg_validator.validate_args_length(args, 17)
+        self.arg_validator.validate_args_length(args, 9)
         validated_args = self.arg_validator.validate_args_type(
             args,
             [
@@ -49,9 +41,33 @@ class EntityRelationshipCommands(Base):
                 "bool",
                 "bool",
                 "fetch_type",
-                "mapping_type",
                 "bool",
                 "bool",
+            ],
+        )
+        self.entity_rel_lib.create_many_to_one_relationship_field(
+            buffer_bytes, buffer_path, *validated_args, debug=attach_debugger
+        )
+
+    @command("CreateOneToManyRelationship", nargs="*")
+    def create_one_to_many_relationship(self, args: List[str]) -> None:
+        # arg0 inverse_field_type (str)
+        # arg1 collection_type (set | list | collection)
+        # arg2 orphan_removal (bool)
+        # arg3 cascade_persist (bool)
+        # arg4 cascade_merge (bool)
+        # arg5 cascade_remove (bool)
+        # arg6 cascade_refresh (bool)
+        # arg7 cascade_detach (bool)
+        attach_debugger: bool = self.arg_validator.attach_debugger(args)
+        if attach_debugger:
+            self.logging.log(f"args:\n{args}", "debug")
+        buffer_path = Path(self.nvim.current.buffer.name)
+        self.arg_validator.validate_args_length(args, 8)
+        validated_args = self.arg_validator.validate_args_type(
+            args,
+            [
+                "str",
                 "collection_type",
                 "bool",
                 "bool",
@@ -61,6 +77,6 @@ class EntityRelationshipCommands(Base):
                 "bool",
             ],
         )
-        self.entity_rel_lib.create_many_to_one_relationship(
-            buffer_bytes, buffer_path, *validated_args, debug=attach_debugger
+        self.entity_rel_lib.create_one_to_many_relationship_field(
+            buffer_path, *validated_args, debug=attach_debugger
         )
