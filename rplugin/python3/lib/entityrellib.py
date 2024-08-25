@@ -469,7 +469,7 @@ class EntityRelationshipLib:
         self,
         owning_side_buffer_bytes: bytes,
         owning_side_buffer_path: Path,
-        field_type: str,
+        inverse_side_type: str,
         owning_side_cascade_persist: bool,
         owning_side_cascade_merge: bool,
         owning_side_cascade_remove: bool,
@@ -490,7 +490,7 @@ class EntityRelationshipLib:
     ):
         related_entities: Dict[str, Tuple[str, Path]] = (
             self.get_bidirectional_buffer_data(
-                owning_side_buffer_path, field_type, debug
+                owning_side_buffer_path, inverse_side_type, debug
             )
         )
         owning_side_field_template = self.generate_many_to_one_template(
