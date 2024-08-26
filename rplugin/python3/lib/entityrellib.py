@@ -790,52 +790,7 @@ class EntityRelationshipLib:
             debug,
         )
 
-    def create_one_to_one_owning_side_relationship_field(
-        self,
-        owning_side_buffer_bytes: bytes,
-        owning_side_buffer_path: Path,
-        inverse_side_type: str,
-        cascade_persist: bool,
-        cascade_merge: bool,
-        cascade_remove: bool,
-        cascade_refresh: bool,
-        cascade_detach: bool,
-        mandatory: bool,
-        unique: bool,
-        orphan_removal: bool,
-        debug: bool = False,
-    ):
-        inverse_side_entity_data: Tuple[str, Path] = self.get_entity_data_by_class_name(
-            inverse_side_type, debug
-        )
-        field_template = self.generate_one_to_one_field_template(
-            inverse_side_entity_data[0],
-            None,
-            cascade_persist,
-            cascade_merge,
-            cascade_remove,
-            cascade_refresh,
-            cascade_detach,
-            mandatory,
-            unique,
-            orphan_removal,
-            debug,
-        )
-        field_insert_point = self.treesitter_lib.get_entity_field_insert_point(
-            owning_side_buffer_bytes, debug
-        )
-        buffer_bytes = self.treesitter_lib.insert_code_into_position(
-            field_template,
-            field_insert_point,
-            owning_side_buffer_bytes,
-            debug,
-        )
-        buffer_bytes = self.add_imports_to_buffer(buffer_bytes, debug)
-        self.treesitter_lib.update_buffer(
-            buffer_bytes, owning_side_buffer_path, False, True, True, debug
-        )
-
-    def create_one_to_one_inverse_side_relationship_field(
+    def create_one_to_one_relationship_field(
         self,
         owning_side_buffer_path: Path,
         inverse_side_type: str,
@@ -847,6 +802,7 @@ class EntityRelationshipLib:
         mandatory: bool,
         unique: bool,
         orphan_removal: bool,
+        owning_side: bool,
         debug: bool = False,
     ):
         owning_side_field_type: Optional[str] = (
@@ -859,12 +815,9 @@ class EntityRelationshipLib:
         inverse_side_entity_data: Tuple[str, Path] = self.get_entity_data_by_class_name(
             inverse_side_type, debug
         )
-        inverse_side_buffer_bytes = self.treesitter_lib.get_bytes_from_path(
-            inverse_side_entity_data[1], debug
-        )
         field_template = self.generate_one_to_one_field_template(
             inverse_side_entity_data[0],
-            owning_side_field_type,
+            None if owning_side else owning_side_field_type,
             cascade_persist,
             cascade_merge,
             cascade_remove,
@@ -875,18 +828,27 @@ class EntityRelationshipLib:
             orphan_removal,
             debug,
         )
+        buffer_bytes = self.treesitter_lib.get_bytes_from_path(
+            owning_side_buffer_path if owning_side else inverse_side_entity_data[1],
+            debug,
+        )
         field_insert_point = self.treesitter_lib.get_entity_field_insert_point(
-            inverse_side_buffer_bytes, debug
+            buffer_bytes, debug
         )
         buffer_bytes = self.treesitter_lib.insert_code_into_position(
             field_template,
             field_insert_point,
-            inverse_side_buffer_bytes,
+            buffer_bytes,
             debug,
         )
         buffer_bytes = self.add_imports_to_buffer(buffer_bytes, debug)
         self.treesitter_lib.update_buffer(
-            buffer_bytes, inverse_side_entity_data[1], False, True, True, debug
+            buffer_bytes,
+            owning_side_buffer_path if owning_side else inverse_side_entity_data[1],
+            False,
+            True,
+            True,
+            debug,
         )
 
     def create_many_to_many_relationship_field(
