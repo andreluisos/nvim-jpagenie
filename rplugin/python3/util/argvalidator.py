@@ -60,10 +60,25 @@ class ArgValidator:
             return value
         raise ValueError(f"{value} is not a valid Java basic type.")
 
+    def is_valid_mapping_type(self, value: str) -> str:
+        if value in ["unidirectional_joincolumn", "bidirectional_joincolumn"]:
+            return value
+        raise ValueError(f"{value} is not a valid mapping type.")
+
+    def is_valid_fetch_type(self, value: str) -> str:
+        if value in ["none", "lazy", "eager"]:
+            return value
+        raise ValueError(f"{value} is not a valid fetch type.")
+
     def is_valid_java_file_name(self, value: str) -> str:
         if value in ["class", "interface", "record", "enum", "annotation"]:
             return value
         raise ValueError(f"{value} is not a valid Java file type")
+
+    def is_valid_collection_type(self, value: str) -> str:
+        if value in ["set", "list", "collection"]:
+            return value
+        raise ValueError(f"{value} is not a valid collection type")
 
     def is_valid_id_generation_type(self, value: str) -> str:
         if value in ["none", "auto", "identity", "sequence"]:
@@ -99,6 +114,9 @@ class ArgValidator:
             "java_file": self.is_valid_java_file_name,
             "id_gen_type": self.is_valid_id_generation_type,
             "id_type": self.is_valid_id_field_type,
+            "mapping_type": self.is_valid_mapping_type,
+            "fetch_type": self.is_valid_fetch_type,
+            "collection_type": self.is_valid_collection_type,
         }
 
         converted_args = []

@@ -209,7 +209,7 @@ class JpaRepositoryLib:
     ) -> None:
         buffer_path = Path(self.nvim.current.buffer.name)
         node = self.treesitter_lib.get_node_from_path(buffer_path, debug=debug)
-        class_name = self.treesitter_lib.get_node_class_name(node, debug=debug)
+        class_name = self.treesitter_lib.get_buffer_class_name(node, debug=debug)
         package_path = self.path_lib.get_buffer_package_path(buffer_path, debug=debug)
         if class_name is None:
             error_msg = "Couldn't find the class name for this buffer"

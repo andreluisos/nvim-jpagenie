@@ -1,10 +1,10 @@
 from pathlib import Path
+from typing import List, Optional
 
 import tree_sitter_java as tsjava
 from pynvim.api import Buffer
 from pynvim.api.nvim import Nvim
 from tree_sitter import Language, Node, Parser
-
 from util.logging import Logging
 
 
@@ -13,12 +13,18 @@ class TreesitterLib:
     PARSER = Parser(JAVA_LANGUAGE)
 
     def __init__(
-        self, nvim: Nvim, java_basic_types: list[tuple], cwd: Path, logging: Logging
+        self,
+        nvim: Nvim,
+        java_basic_types: list[tuple],
+        cwd: Path,
+        logging: Logging,
     ):
         self.nvim = nvim
         self.cwd: Path = cwd
         self.java_basic_types = java_basic_types
         self.logging = logging
+        self.all_field_declarations_query = "(field_declaration) @field"
+        self.class_body_query = "(class_body) @body"
         self.class_declaration_query = "(class_declaration) @class"
         self.class_annotation_query = """
         (class_declaration
@@ -53,10 +59,10 @@ class TreesitterLib:
         self.nvim.command(f"e {str(buffer_path)}")
         if save:
             self.nvim.command(f"w {str(buffer_path)}")
-        if format and not save:
-            self.nvim.command("lua vim.lsp.buf.format({ async = true })")
         if organize_imports:
             self.nvim.command("lua require('jdtls').organize_imports()")
+        if format and not save:
+            self.nvim.command("lua vim.lsp.buf.format({ async = true })")
         if debug:
             self.logging.log(
                 [
@@ -123,6 +129,40 @@ class TreesitterLib:
             self.logging.log(f"Node text: {node_text}", "debug")
         return node_text
 
+    def get_entity_field_insert_point(
+        self, buffer_bytes: bytes, debug: bool = False
+    ) -> int:
+        buffer_node = self.get_node_from_bytes(buffer_bytes)
+        field_declarations = self.query_node(
+            buffer_node, self.all_field_declarations_query, debug
+        )
+        field_declarations_count = len(field_declarations)
+        if field_declarations_count != 0:
+            # != 0 means there are existing field declarations
+            last_field: Node = field_declarations[field_declarations_count - 1][0]
+            position = (last_field.start_byte, last_field.end_byte)
+            if debug:
+                self.logging.log(
+                    f"field_declarations_count: {field_declarations_count}", "debug"
+                )
+                self.logging.log(f"position: {position}", "debug")
+            return position[1]
+        class_body = self.query_node(buffer_node, self.class_body_query, debug)
+        if len(class_body) != 1:
+            self.logging.log(
+                "Couldn't find the class declaration.",
+                "error",
+            )
+            raise ValueError("Couldn't find the class declaration.")
+        position = (
+            class_body[0][0].start_byte,
+            class_body[0][0].end_byte,
+        )
+        if debug:
+            self.logging.log(f"class body count: {len(class_body)}", "debug")
+            self.logging.log(f"position: {position}", "debug")
+        return position[0] + 1
+
     def query_node(
         self, node: Node, query: str, debug: bool = False
     ) -> list[tuple[Node, str]]:
@@ -161,12 +201,29 @@ class TreesitterLib:
             self.logging.log(f"Search term {search_term} is not present.", "debug")
         return False
 
-    def get_node_class_name(self, node: Node, debug: bool = False) -> str | None:
+    def get_buffer_class_name(
+        self,
+        buffer: Node | Path | bytes,
+        debug: bool = False,
+    ) -> str | None:
         class_name_query = """
         (class_declaration
             name: (identifier) @class_name
             )
         """
+        node: Optional[Node] = None
+        if isinstance(buffer, Node):
+            node = buffer
+        if isinstance(buffer, Path):
+            node = self.get_node_from_path(
+                buffer,
+            )
+        if isinstance(buffer, bytes):
+            node = self.get_node_from_bytes(buffer, debug)
+        if node is None:
+            error_msg = "Something went wrong"
+            self.logging.log(error_msg, "error")
+            raise ValueError(error_msg)
         results = self.query_node(node, class_name_query)
         if len(results) == 1:
             class_name = self.get_node_text(results[0][0])
@@ -213,28 +270,31 @@ class TreesitterLib:
             )
         return new_source
 
-    def insert_import_path_into_buffer(
-        self, buffer_bytes: bytes, import_path: str, debug: bool = False
+    def insert_import_paths_into_buffer(
+        self, buffer_bytes: bytes, import_paths: List[str], debug: bool = False
     ) -> bytes:
         buffer_node = self.get_node_from_bytes(buffer_bytes)
-        insert_position: int
-        import_declarations = self.query_node(
-            buffer_node, self.import_declarations_query, debug
-        )
-        if len(import_declarations) > 0:
-            insert_position = import_declarations[len(import_declarations) - 1][
-                0
-            ].end_byte
-        else:
-            class_declaration = self.query_node(
-                buffer_node, self.class_declaration_query, debug
+        updated_buffer_bytes: bytes = buffer_bytes
+        for import_path in import_paths:
+            insert_position: int
+            import_declarations = self.query_node(
+                buffer_node, self.import_declarations_query, debug
             )
-            if len(class_declaration) != 1:
-                error_msg = "Unable to query class declaration"
-                self.logging.log(error_msg, "error")
-                raise ValueError(error_msg)
-            insert_position = class_declaration[0][0].start_byte
-        template = f"\nimport {import_path};\n\n"
-        return self.insert_code_into_position(
-            template, insert_position, buffer_bytes, debug
-        )
+            if len(import_declarations) > 0:
+                insert_position = import_declarations[len(import_declarations) - 1][
+                    0
+                ].end_byte
+            else:
+                class_declaration = self.query_node(
+                    buffer_node, self.class_declaration_query, debug
+                )
+                if len(class_declaration) != 1:
+                    error_msg = "Unable to query class declaration"
+                    self.logging.log(error_msg, "error")
+                    raise ValueError(error_msg)
+                insert_position = class_declaration[0][0].start_byte
+            template = f"\nimport {import_path};\n"
+            updated_buffer_bytes = self.insert_code_into_position(
+                template, insert_position, updated_buffer_bytes, debug
+            )
+        return updated_buffer_bytes

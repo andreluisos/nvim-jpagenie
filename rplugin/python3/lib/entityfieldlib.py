@@ -1,9 +1,8 @@
 from pathlib import Path
 from re import sub
-from typing import Literal
+from typing import List, Literal
 
 from pynvim.api.nvim import Nvim
-from tree_sitter import Node
 
 from lib.treesitterlib import TreesitterLib
 from util.logging import Logging
@@ -21,45 +20,10 @@ class EntityFieldLib:
         self.treesitter_lib = treesitter_lib
         self.logging = logging
         self.java_basic_types = java_basic_types
-        self.all_field_declarations_query = "(field_declaration) @field"
         self.class_body_query = "(class_body) @body"
 
     def get_available_types(self) -> list[list[str | tuple[str, str | None]]]:
         return [[f"{t[0]} ({t[1]})", t] for t in self.java_basic_types]
-
-    def get_field_insert_point(self, buffer_bytes: bytes, debug: bool = False) -> int:
-        buffer_node = self.treesitter_lib.get_node_from_bytes(buffer_bytes)
-        field_declarations = self.treesitter_lib.query_node(
-            buffer_node, self.all_field_declarations_query, debug
-        )
-        field_declarations_count = len(field_declarations)
-        if field_declarations_count != 0:
-            # != 0 means there are existing field declarations
-            last_field: Node = field_declarations[field_declarations_count - 1][0]
-            position = (last_field.start_byte, last_field.end_byte)
-            if debug:
-                self.logging.log(
-                    f"field_declarations_count: {field_declarations_count}", "debug"
-                )
-                self.logging.log(f"position: {position}", "debug")
-            return position[1]
-        class_body = self.treesitter_lib.query_node(
-            buffer_node, self.class_body_query, debug
-        )
-        if len(class_body) != 1:
-            self.logging.log(
-                "Couldn't find the class declaration.",
-                "error",
-            )
-            raise ValueError("Couldn't find the class declaration.")
-        position = (
-            class_body[0][0].start_byte,
-            class_body[0][0].end_byte,
-        )
-        if debug:
-            self.logging.log(f"class body count: {len(class_body)}", "debug")
-            self.logging.log(f"position: {position}", "debug")
-        return position[0] + 1
 
     def generate_basic_field_template(
         self,
@@ -166,17 +130,19 @@ class EntityFieldLib:
         template = "\n\n" + self.generate_basic_field_template(
             field_type, field_name, nullable, unique, large_object, debug
         )
-        new_source = self.treesitter_lib.insert_import_path_into_buffer(
-            buffer_bytes, "jakarta.persistence.Column", debug
+        new_source = self.treesitter_lib.insert_import_paths_into_buffer(
+            buffer_bytes, ["jakarta.persistence.Column"], debug
         )
         type_import_path = self.treesitter_lib.get_field_type_import_path(
             field_type, debug
         )
         if type_import_path:
-            new_source = self.treesitter_lib.insert_import_path_into_buffer(
-                new_source, type_import_path, debug
+            new_source = self.treesitter_lib.insert_import_paths_into_buffer(
+                new_source, [type_import_path], debug
             )
-        insert_position = self.get_field_insert_point(new_source, debug)
+        insert_position = self.treesitter_lib.get_entity_field_insert_point(
+            new_source, debug
+        )
         class_body_position = self.treesitter_lib.query_node(
             self.treesitter_lib.get_node_from_bytes(new_source),
             self.class_body_query,
@@ -221,24 +187,23 @@ class EntityFieldLib:
         template = "\n\n" + self.generate_enum_field_template(
             field_type, field_name, enum_type, string_length, nullable, unique, debug
         )
-        insert_position = self.get_field_insert_point(buffer_bytes, debug)
+        importings: List[str] = [
+            "jakarta.persistence.Enumerated",
+            "jakarta.persistence.EnumType",
+        ]
+        insert_position = self.treesitter_lib.get_entity_field_insert_point(
+            buffer_bytes, debug
+        )
         new_source = self.treesitter_lib.insert_code_into_position(
             template, insert_position, buffer_bytes, debug
         )
         type_import_path = self.treesitter_lib.get_field_type_import_path(
             field_type, debug
         )
-        enumerated_import_path = "jakarta.persistence.Enumerated"
-        enumtype_import_path = "jakarta.persistence.EnumType"
         if type_import_path is not None:
-            new_source = self.treesitter_lib.insert_import_path_into_buffer(
-                new_source, type_import_path, debug
-            )
-        new_source = self.treesitter_lib.insert_import_path_into_buffer(
-            new_source, enumerated_import_path, debug
-        )
-        new_source = self.treesitter_lib.insert_import_path_into_buffer(
-            new_source, enumtype_import_path, debug
+            importings.append(type_import_path)
+        new_source = self.treesitter_lib.insert_import_paths_into_buffer(
+            new_source, importings, debug
         )
         if debug:
             self.logging.log(
@@ -251,8 +216,9 @@ class EntityFieldLib:
                     f"nullable: {nullable}\n"
                     f"unique: {unique}\n"
                     f"insert position: {insert_position}\n"
-                    f"type import path: {type_import_path}\n"
-                    f"enumerated import path: {enumerated_import_path}\n"
+                    f"type import path: {importings[2] if len(importings) >=2 else None}\n"
+                    f"enumerated import path: {importings[0]}\n"
+                    f"enumtype import path: {importings[1]}\n"
                     f"template:\n{template}\n"
                     f"buffer before:\n{buffer_bytes.decode('utf-8')}\n"
                     f"buffer after:\n{buffer_bytes.decode('utf-8')}\n"
@@ -274,31 +240,27 @@ class EntityFieldLib:
         debug: bool = False,
     ) -> None:
         new_source: bytes
+        importings: List[str] = [
+            "jakarta.persistence.GeneratedValue",
+            "jakarta.persistence.GenerationType",
+            "jakarta.persistence.Id",
+        ]
         template = "\n\n" + self.generate_id_field_template(
             field_type, field_name, id_generation, nullable, debug
         )
-        insert_position = self.get_field_insert_point(buffer_bytes, debug)
+        insert_position = self.treesitter_lib.get_entity_field_insert_point(
+            buffer_bytes, debug
+        )
         new_source = self.treesitter_lib.insert_code_into_position(
             template, insert_position, buffer_bytes, debug
         )
         type_import_path = self.treesitter_lib.get_field_type_import_path(
             field_type, debug
         )
-        generated_value_import_path = "jakarta.persistence.GeneratedValue"
-        generation_type_import_path = "jakarta.persistence.GenerationType"
-        id_import_path = "jakarta.persistence.Id"
         if type_import_path is not None:
-            new_source = self.treesitter_lib.insert_import_path_into_buffer(
-                new_source, type_import_path, debug
-            )
-        new_source = self.treesitter_lib.insert_import_path_into_buffer(
-            new_source, generated_value_import_path, debug
-        )
-        new_source = self.treesitter_lib.insert_import_path_into_buffer(
-            new_source, generation_type_import_path, debug
-        )
-        new_source = self.treesitter_lib.insert_import_path_into_buffer(
-            new_source, id_import_path, debug
+            importings.append(type_import_path)
+        new_source = self.treesitter_lib.insert_import_paths_into_buffer(
+            new_source, importings, debug
         )
         if debug:
             self.logging.log(
@@ -309,10 +271,10 @@ class EntityFieldLib:
                     f"id generation: {id_generation}\n"
                     f"nullable: {nullable}\n"
                     f"insert position: {insert_position}\n"
-                    f"type import path: {type_import_path}\n"
-                    f"generated value import path: {generated_value_import_path}\n"
-                    f"generation type import path: {generation_type_import_path}\n"
-                    f"id import path: {id_import_path}\n"
+                    f"type import path: {importings[3] if len(importings) >=3 else None}\n"
+                    f"generated value import path: {importings[0]}\n"
+                    f"generation type import path: {importings[1]}\n"
+                    f"id import path: {importings[2]}\n"
                     f"template:\n{template}\n"
                     f"buffer before:\n{buffer_bytes.decode('utf-8')}\n"
                     f"buffer after:\n{buffer_bytes.decode('utf-8')}\n"
