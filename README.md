@@ -1,4 +1,4 @@
-# nvim-springutils
+# nvim-jpagenie
 Is Java programming on nvim funless? Let's bring some cool functionalities to it, then.
 
 This project aims to bring some core functionalities from IDEs out there to nvim, mainly the ones related to Spring.
