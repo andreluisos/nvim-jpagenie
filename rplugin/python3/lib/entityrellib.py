@@ -108,7 +108,7 @@ class EntityRelationshipLib:
         if name is not None:
             params.append(f'name = "{name}"')
         if mapped_by is not None:
-            params.append(f'mappedBy = "{mapped_by}"')
+            params.append(f'mappedBy = "{mapped_by.lower()}"')
         if nullable is not None:
             params.append(f"nullable = {str(nullable).lower()}")
         if optional is not None:
@@ -225,7 +225,7 @@ class EntityRelationshipLib:
         return field_name
 
     def generated_snaked_field_name(self, field_type: str, debug: bool = False) -> str:
-        snaked_field_name = sub(r"(?<!^)(?=[A-Z])", "_", field_type).lower() + "_id"
+        snaked_field_name = sub(r"(?<!^)(?=[A-Z])", "_", field_type).lower()
         if debug:
             self.logging.log(
                 [
@@ -326,6 +326,48 @@ class EntityRelationshipLib:
             )
         return body
 
+    def generate_many_to_many_annotation_body(
+        self,
+        cascade_persist: bool,
+        cascade_merge: bool,
+        cascade_refresh: bool,
+        cascade_detach: bool,
+        mapped_by: Optional[str] = None,
+        debug: bool = False,
+    ):
+        body = "@ManyToMany"
+        params: List[str] = []
+        extra_params: Optional[str]
+        cascade_param: Optional[str] = self.process_cascades_params(
+            cascade_persist,
+            cascade_merge,
+            False,
+            cascade_refresh,
+            cascade_detach,
+            debug,
+        )
+        if mapped_by is not None:
+            extra_params = self.process_extra_params(
+                mapped_by=mapped_by if mapped_by is not None else None,
+                debug=debug,
+            )
+            params.append(extra_params)
+        if cascade_param:
+            params.append(cascade_param)
+        if len(params) > 0:
+            body += "(" + ", ".join(params) + ")"
+        if "jakarta.persistence.ManyToMany" not in self.importings:
+            self.importings.append("jakarta.persistence.ManyToMany")
+        if debug:
+            self.logging.log(
+                [
+                    f"Params: {', '.join(params)}",
+                    f"Body: {body}",
+                ],
+                "debug",
+            )
+        return body
+
     def generate_one_to_one_annotation_body(
         self,
         cascade_persist: bool,
@@ -372,6 +414,40 @@ class EntityRelationshipLib:
             )
         return body
 
+    def generate_join_table_body(
+        self,
+        owning_side_field_type: str,
+        inverse_side_field_type: str,
+        debug: bool = False,
+    ) -> str:
+        snaked_owning_side_field_name = self.generated_snaked_field_name(
+            owning_side_field_type, debug
+        )
+        snaked_inverse_side_field_name = self.generated_snaked_field_name(
+            inverse_side_field_type, debug
+        )
+        body = (
+            "@JoinTable("
+            + f'name = "{snaked_owning_side_field_name}_{snaked_inverse_side_field_name}", '
+            + f'joinColumns = @JoinColumn(name = "{snaked_owning_side_field_name}_id"), '
+            + f'inverseJoinColumns = @JoinColumn(name = "{snaked_inverse_side_field_name}_id")'
+            + ")"
+        )
+        if "jakarta.persistence.JoinColumn" not in self.importings:
+            self.importings.append("jakarta.persistence.JoinColumn")
+        if "jakarta.persistence.JoinTable" not in self.importings:
+            self.importings.append("jakarta.persistence.JoinTable")
+        if debug:
+            self.logging.log(
+                [
+                    f"Snaked owning field name: {owning_side_field_type}",
+                    f"Snaked inverse field name: {inverse_side_field_type}",
+                    f"Body: {body}",
+                ],
+                "debug",
+            )
+        return body
+
     def generate_join_column_body(
         self,
         inverse_side_field_type: str,
@@ -380,8 +456,8 @@ class EntityRelationshipLib:
         debug: bool = False,
     ) -> str:
         body = "@JoinColumn"
-        snaked_field_name = self.generated_snaked_field_name(
-            inverse_side_field_type, debug
+        snaked_field_name = (
+            self.generated_snaked_field_name(inverse_side_field_type, debug) + "_id"
         )
         extra_params = self.process_extra_params(
             name=snaked_field_name, nullable=nullable, unique=unique, debug=debug
@@ -563,6 +639,47 @@ class EntityRelationshipLib:
         complete_field_body = "\n" + "\n" + one_to_one_body
         if owning_side_field_type is None:
             complete_field_body += "\n" + join_column_body
+        complete_field_body += "\n" + field_body + "\n"
+        if debug:
+            self.logging.log(complete_field_body, "debug")
+        return complete_field_body
+
+    def generate_many_to_many_field_template(
+        self,
+        owning_side_field_type: str,
+        inverse_side_field_type: str,
+        cascade_persist: bool,
+        cascade_merge: bool,
+        cascade_refresh: bool,
+        cascade_detach: bool,
+        collection_type: str,
+        owning_side: bool,
+        debug: bool = False,
+    ) -> str:
+        many_to_many_body = self.generate_many_to_many_annotation_body(
+            cascade_persist,
+            cascade_merge,
+            cascade_refresh,
+            cascade_detach,
+            inverse_side_field_type if owning_side is False else None,
+            debug,
+        )
+        join_table_body: str = ""
+        field_body: str = ""
+        if owning_side:
+            join_table_body = self.generate_join_table_body(
+                owning_side_field_type, inverse_side_field_type, debug
+            )
+            field_body = self.generate_field_body(
+                inverse_side_field_type, True, collection_type
+            )
+        else:
+            field_body = self.generate_field_body(
+                owning_side_field_type, True, collection_type, debug
+            )
+        complete_field_body = "\n" + "\n" + many_to_many_body
+        if owning_side:
+            complete_field_body += "\n" + join_table_body
         complete_field_body += "\n" + field_body + "\n"
         if debug:
             self.logging.log(complete_field_body, "debug")
@@ -770,4 +887,60 @@ class EntityRelationshipLib:
         buffer_bytes = self.add_imports_to_buffer(buffer_bytes, debug)
         self.treesitter_lib.update_buffer(
             buffer_bytes, inverse_side_entity_data[1], False, True, True, debug
+        )
+
+    def create_many_to_many_relationship_field(
+        self,
+        owning_side_buffer_path: Path,
+        inverse_side_type: str,
+        cascade_persist: bool,
+        cascade_merge: bool,
+        cascade_refresh: bool,
+        cascade_detach: bool,
+        collection_type: str,
+        owning_side: bool,
+        debug: bool = False,
+    ):
+        owning_side_field_type: Optional[str] = (
+            self.treesitter_lib.get_buffer_class_name(owning_side_buffer_path, debug)
+        )
+        if owning_side_field_type is None:
+            error_msg = "Could not locate owning side field type"
+            self.logging.log(error_msg, "error")
+            raise FileNotFoundError(error_msg)
+        inverse_side_entity_data: Tuple[str, Path] = self.get_entity_data_by_class_name(
+            inverse_side_type, debug
+        )
+        field_template = self.generate_many_to_many_field_template(
+            owning_side_field_type,
+            inverse_side_entity_data[0],
+            cascade_persist,
+            cascade_merge,
+            cascade_refresh,
+            cascade_detach,
+            collection_type,
+            True if owning_side else False,
+            debug,
+        )
+        buffer_bytes = self.treesitter_lib.get_bytes_from_path(
+            owning_side_buffer_path if owning_side else inverse_side_entity_data[1],
+            debug,
+        )
+        field_insert_point = self.treesitter_lib.get_entity_field_insert_point(
+            buffer_bytes, debug
+        )
+        buffer_bytes = self.treesitter_lib.insert_code_into_position(
+            field_template,
+            field_insert_point,
+            buffer_bytes,
+            debug,
+        )
+        buffer_bytes = self.add_imports_to_buffer(buffer_bytes, debug)
+        self.treesitter_lib.update_buffer(
+            buffer_bytes,
+            owning_side_buffer_path if owning_side else inverse_side_entity_data[1],
+            False,
+            True,
+            True,
+            debug,
         )

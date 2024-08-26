@@ -150,3 +150,33 @@ class EntityRelationshipCommands(Base):
         self.entity_rel_lib.create_one_to_one_inverse_side_relationship_field(
             buffer_path, *validated_args, debug=attach_debugger
         )
+
+    @command("CreateManyToManyRelationship", nargs="*")
+    def create_many_to_many_owning_side_relationship(self, args: List[str]) -> None:
+        # arg0 inverse_field_type (str)
+        # arg1 cascade_persist (bool)
+        # arg2 cascade_merge (bool)
+        # arg3 cascade_refresh (bool)
+        # arg4 cascade_detach (bool)
+        # arg5 collection_type (set | list | collection)
+        # arg6 owning_side (bool)
+        attach_debugger: bool = self.arg_validator.attach_debugger(args)
+        if attach_debugger:
+            self.logging.log(f"args:\n{args}", "debug")
+        buffer_path = Path(self.nvim.current.buffer.name)
+        self.arg_validator.validate_args_length(args, 7)
+        validated_args = self.arg_validator.validate_args_type(
+            args,
+            [
+                "str",
+                "bool",
+                "bool",
+                "bool",
+                "bool",
+                "collection_type",
+                "bool",
+            ],
+        )
+        self.entity_rel_lib.create_many_to_many_relationship_field(
+            buffer_path, *validated_args, debug=attach_debugger
+        )
