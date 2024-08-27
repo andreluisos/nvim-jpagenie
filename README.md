@@ -23,5 +23,5 @@ TODO:
 - [x] Create JPA repository for an entity (still need UI)
 - [x] Create class/enum/interface/annotation/record (still need UI)
 - [ ] Create an Entity
-- [ ] Create DTO for an entity
+- [x] Create DTO for an entity (WIP)
 - [ ] ![Port to Java?](https://github.com/andreluisos/nvim-jpagenie/issues/9)
