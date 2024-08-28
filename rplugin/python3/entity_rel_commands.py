@@ -146,3 +146,9 @@ class EntityRelationshipCommands(Base):
         self.entity_rel_lib.create_many_to_many_relationship_field(
             buffer_path, *validated_args, debug=attach_debugger
         )
+
+    @command("Test")
+    def test(self) -> None:
+        # Basic debug to check if command works
+        buffer_path = Path(self.nvim.current.buffer.name)
+        self.entity_rel_lib.many_to_one_ui(buffer_path, True)

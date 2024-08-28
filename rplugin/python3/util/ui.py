@@ -1,3 +1,4 @@
+from json import dumps
 from pathlib import Path
 from typing import Dict, List, Optional, Tuple
 from pynvim.api import Nvim
@@ -15,15 +16,13 @@ class UiUtil:
         self.nvim = nvim
         self.logging = logging
 
-    def mapping_type_selection_window(self, available_mapping_types: List[str]) -> str:
-        mapping_type_display = "\n".join(available_mapping_types)
-        title = "Select the mapping type"
-        mapping_type_selection = self.nvim.eval(
-            f"quickui#confirm#open('', '{mapping_type_display}', 1, '{title}')"
+    def generic_confirm_selection_window(self, options: List[str], title: str) -> str:
+        options_display = "\n".join(options)
+        opts = {"h": 4}
+        option_selection = self.nvim.eval(
+            f"quickui#confirm#open('{title}', '{options_display}', 1, '<ESC> to cancel', {dumps(opts)})"
         )
-        lower_mapping_type = "_".join(
-            available_mapping_types[mapping_type_selection].split()
-        ).lower()
+        lower_mapping_type = options[option_selection - 1].replace(" ", "_").lower()
         return lower_mapping_type
 
     def inverse_entity_selection_window(
@@ -44,7 +43,10 @@ class UiUtil:
             return None
         return entity_display[inverse_entity_selection].split()[0]
 
-    def cascade_selection_window(self) -> List[bool]:
+    def cascade_selection_window(
+        self, options: List[List[str | int]], title: str
+    ) -> List[bool]:
+        initial_list = options
         initial_list = [
             ["All", 0],
             ["Persist", 0],
@@ -62,8 +64,9 @@ class UiUtil:
                 if i[1] == 1:
                     display_list.append(f"[X] {i[0]}")
             display_list += ["", "Confirm"]
+            opts = {"title": title, "index": last_selection}
             selection = self.nvim.eval(
-                f"quickui#listbox#inputlist({display_list}, {{'index': {last_selection}}})"
+                f"quickui#listbox#inputlist({display_list}, {dumps(opts)})"
             )
             if selection == len(display_list) - 1 or selection == -1:
                 break

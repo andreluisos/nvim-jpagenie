@@ -9,6 +9,7 @@ from lib.jparepolib import JpaRepositoryLib
 from lib.pathlib import PathLib
 from lib.treesitterlib import TreesitterLib
 from lib.entityrellib import EntityRelationshipLib
+from util.ui import UiUtil
 from util.argvalidator import ArgValidator
 from util.logging import Logging
 
@@ -24,6 +25,7 @@ class Base(object):
             self.nvim, self.java_basic_types, self.cwd, self.logging
         )
         self.path_lib = PathLib(self.cwd, self.treesitter_lib, self.logging)
+        self.ui_util = UiUtil(self.nvim, self.logging)
         self.java_file_lib = JavaFileLib(self.nvim, self.logging, self.treesitter_lib)
         self.jpa_repo_lib = JpaRepositoryLib(
             self.nvim, self.treesitter_lib, self.path_lib, self.logging
@@ -32,5 +34,5 @@ class Base(object):
             self.nvim, self.java_basic_types, self.treesitter_lib, self.logging
         )
         self.entity_rel_lib = EntityRelationshipLib(
-            self.nvim, self.treesitter_lib, self.path_lib, self.logging
+            self.nvim, self.treesitter_lib, self.path_lib, self.logging, self.ui_util
         )

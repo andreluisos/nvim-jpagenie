@@ -1,3 +1,5 @@
+import json
+from os import write
 from pathlib import Path
 from re import sub
 from typing import Dict, List, Optional, Tuple
@@ -5,6 +7,7 @@ from typing import Dict, List, Optional, Tuple
 from lib.pathlib import PathLib
 from lib.treesitterlib import TreesitterLib
 from pynvim.api.nvim import Nvim
+from util.ui import UiUtil
 from util.logging import Logging
 
 
@@ -15,11 +18,13 @@ class EntityRelationshipLib:
         treesitter_lib: TreesitterLib,
         path_lib: PathLib,
         logging: Logging,
+        ui_util: UiUtil,
     ):
         self.nvim = nvim
         self.treesitter_lib = treesitter_lib
         self.path_lib = path_lib
         self.logging = logging
+        self.ui_util = ui_util
         self.importings: List[str] = []
 
     def pluralize(self, word: str, debug: bool = False) -> str:
@@ -157,9 +162,9 @@ class EntityRelationshipLib:
             )
         return (collection_name, collection_initialization)
 
-    def get_all_jpa_entities(self, debug: bool = False) -> Dict[str, Path]:
+    def get_all_jpa_entities(self, debug: bool = False) -> Dict[str, Tuple[str, Path]]:
         root_path = Path(self.path_lib.get_spring_project_root_path())
-        entities_found: Dict[str, Path] = {}
+        entities_found: Dict[str, Tuple[str, Path]] = {}
         for p in root_path.rglob("*.java"):
             if self.treesitter_lib.is_buffer_jpa_entity(p, debug):
                 entity_path = p
@@ -167,8 +172,11 @@ class EntityRelationshipLib:
                 entity_name = self.treesitter_lib.get_buffer_class_name(
                     entity_node, debug
                 )
-                if entity_name:
-                    entities_found[entity_name] = entity_path
+                entity_package_path = self.path_lib.get_buffer_package_path(
+                    entity_path, debug
+                )
+                if entity_name and entity_package_path:
+                    entities_found[entity_name] = (entity_package_path, entity_path)
         if debug:
             self.logging.log(
                 [f"{e[0]} - {str(e[1])}" for e in entities_found.items()], "debug"
@@ -184,7 +192,7 @@ class EntityRelationshipLib:
         found_entity: Optional[Tuple[str, Path]] = None
         for entity in all_entities:
             if entity == class_name:
-                found_entity = (entity, all_entities[entity])
+                found_entity = (entity, all_entities[entity][1])
         if debug:
             self.logging.log(f"Buffer data: {str(found_entity)}", "debug")
         if not found_entity:
@@ -202,7 +210,7 @@ class EntityRelationshipLib:
         found_entity: Optional[Tuple[str, Path]] = None
         for entity in all_entities:
             if entity[1] == buffer_path:
-                found_entity = (entity, all_entities[entity])
+                found_entity = (entity, all_entities[entity][1])
         if debug:
             self.logging.log(f"Buffer data: {str(found_entity)}", "debug")
         if not found_entity:
@@ -906,3 +914,41 @@ class EntityRelationshipLib:
             True,
             debug,
         )
+
+    def many_to_one_ui(
+        self, owning_side_buffer_path: Path, debug: bool = False
+    ) -> None:
+        params = []
+        owning_side_field_type: Optional[str] = (
+            self.treesitter_lib.get_buffer_class_name(owning_side_buffer_path, debug)
+        )
+        if owning_side_field_type is None:
+            error_msg = "Could not locate owning side field type"
+            self.logging.log(error_msg, "error")
+            raise FileNotFoundError(error_msg)
+        selected_mapping_type = self.ui_util.generic_confirm_selection_window(
+            ["Unidirectional JoinColumn", "Bidirectional JoinColumn"],
+            "Select the mapping type for this relationship",
+        )
+        selected_inverse_entity = self.ui_util.inverse_entity_selection_window(
+            owning_side_field_type, self.get_all_jpa_entities(debug)
+        )
+        selected_cascades = self.ui_util.cascade_selection_window(
+            "Select cascades for the owning side"
+        )
+        if selected_inverse_entity is not None:
+            params.append(str(selected_inverse_entity))
+        # params.extend(selected_cascades)
+        selected_fetching_type = self.ui_util.generic_confirm_selection_window(
+            ["None", "Lazy", "Eager"],
+            "Select the desired fetching type for this relationship",
+        )
+        params.append(selected_fetching_type)
+        self.nvim.command(f"echomsg {json.dumps(params)}")
+        # available_mapping_types = [
+        #     "Unidirectional JoinColumn",
+        #     "Bidirectional JoinColumn",
+        # ]
+        # mapping_type = self.nvim.eval(
+        #     f"quickui#listbox#inputlist({available_mapping_types}, {{'title': 'Select the mapping type', 'h': 10}})"
+        # )
