@@ -1,4 +1,5 @@
 from pathlib import Path
+from typing import Dict, Tuple
 
 from lib.treesitterlib import TreesitterLib
 from util.logging import Logging
@@ -20,6 +21,25 @@ class PathLib:
         self.spring_project_root_path: str = self.get_spring_project_root_path()
         self.spring_main_class_path: str = self.get_spring_main_class_path()
         self.spring_root_package_path: str = self.get_spring_root_package_path()
+
+    def get_all_jpa_entities(self, debug: bool = False) -> Dict[str, Tuple[str, Path]]:
+        root_path = Path(self.get_spring_project_root_path())
+        entities_found: Dict[str, Tuple[str, Path]] = {}
+        for p in root_path.rglob("*.java"):
+            if self.treesitter_lib.is_buffer_jpa_entity(p, debug):
+                entity_path = p
+                entity_node = self.treesitter_lib.get_node_from_path(p, debug)
+                entity_package_path = self.get_buffer_package_path(entity_path)
+                entity_name = self.treesitter_lib.get_buffer_class_name(
+                    entity_node, debug
+                )
+                if entity_name:
+                    entities_found[entity_name] = (entity_package_path, entity_path)
+        if debug:
+            self.logging.log(
+                [f"{e[0]} - {str(e[1])}" for e in entities_found.items()], "debug"
+            )
+        return entities_found
 
     def get_buffer_package_path(
         self,
