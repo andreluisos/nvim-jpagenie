@@ -9,6 +9,7 @@ from lib.jparepolib import JpaRepositoryLib
 from lib.pathlib import PathLib
 from lib.treesitterlib import TreesitterLib
 from lib.entityrellib import EntityRelationshipLib
+from util.file_reader import FileReader
 from util.ui import UiUtil
 from util.argvalidator import ArgValidator
 from util.logging import Logging
@@ -19,6 +20,7 @@ class Base(object):
         self.nvim = nvim
         self.cwd = Path(self.nvim.funcs.getcwd()).resolve()
         self.ui_path = str(Path(__file__).parent.resolve().joinpath("ui"))
+        self.file_reader = FileReader()
         self.java_basic_types = JAVA_BASIC_TYPES
         self.logging = Logging()
         self.arg_validator = ArgValidator(self.java_basic_types, self.logging)
