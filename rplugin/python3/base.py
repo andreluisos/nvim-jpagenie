@@ -37,5 +37,5 @@ class Base(object):
             self.nvim, self.java_basic_types, self.treesitter_lib, self.logging
         )
         self.entity_rel_lib = EntityRelationshipLib(
-            self.nvim, self.treesitter_lib, self.path_lib, self.logging, self.ui_util
+            self.nvim, self.treesitter_lib, self.path_lib, self.logging
         )
