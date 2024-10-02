@@ -17,7 +17,7 @@ for _, v in ipairs(args[2]) do
 end
 
 local signal = n.create_signal({
-    field_type = nil,
+    inverse_field_type = nil,
     fetch_type = "lazy",
     cascade_persist = false,
     cascade_merge = false,
@@ -35,11 +35,11 @@ renderer:render(
             flex = 1,
             autofocus = true,
             border_label = "Inverse entity",
-            selected = signal.field_type,
+            selected = signal.inverse_field_type,
             data = entity_options,
             multiselect = false,
             on_select = function(node)
-                signal.field_type = node.id
+                signal.inverse_field_type = node.id
             end,
         }),
         cascades.render_component(signal),
@@ -64,7 +64,7 @@ renderer:render(
             align = "center",
             padding = { bottom = 1 },
             on_press = function()
-                vim.call("GenieCallbackFunction", signal:get_value())
+                vim.call("ManyToOneCallback", signal:get_value())
                 renderer:close()
             end,
         })
