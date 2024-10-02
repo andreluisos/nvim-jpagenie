@@ -18,6 +18,7 @@ class Base(object):
     def __init__(self, nvim: Nvim) -> None:
         self.nvim = nvim
         self.cwd = Path(self.nvim.funcs.getcwd()).resolve()
+        self.ui_path = str(Path(__file__).parent.resolve().joinpath("ui"))
         self.java_basic_types = JAVA_BASIC_TYPES
         self.logging = Logging()
         self.arg_validator = ArgValidator(self.java_basic_types, self.logging)
