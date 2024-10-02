@@ -5,11 +5,11 @@ local function render_component(signal)
         border_label = "Cascades",
         flex = 1,
         data = {
-            n.node({ text = "Persist", is_done = signal.cascade_persist }),
-            n.node({ text = "Merge", is_done = signal.cascade_merge }),
-            n.node({ text = "Remove", is_done = signal.cascade_remove }),
-            n.node({ text = "Refresh", is_done = signal.cascade_refresh }),
-            n.node({ text = "Detach", is_done = signal.cascade_detach }),
+            n.node({ text = "Persist", is_done = false }),
+            n.node({ text = "Merge", is_done = false }),
+            n.node({ text = "Remove", is_done = false }),
+            n.node({ text = "Refresh", is_done = false }),
+            n.node({ text = "Detach", is_done = false }),
         },
         on_select = function(node, component)
             local tree = component:get_tree()
@@ -39,6 +39,7 @@ local function render_component(signal)
         end,
     })
 end
+
 
 return {
     render_component = render_component,
