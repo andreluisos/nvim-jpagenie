@@ -247,7 +247,7 @@ class EntityRelationshipLib:
             debug,
         )
         extra_params: str = self.process_extra_params(
-            orphan_removal=True,
+            orphan_removal=orphan_removal,
             mapped_by=self.generated_snaked_field_name(one_field_type),
             debug=debug,
         )
