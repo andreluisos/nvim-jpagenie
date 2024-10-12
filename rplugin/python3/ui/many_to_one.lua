@@ -5,6 +5,7 @@ package.path = package.path .. ";" .. args[1] .. "/?.lua"
 local n = require("nui-components")
 
 local select_one = require("select_one")
+
 local select_many = require("select_many")
 
 local renderer = n.create_renderer({
