@@ -16,7 +16,7 @@ local renderer = n.create_renderer({
 local signal = n.create_signal({
     confirm_btn_hidden = false,
     next_btn_hidden = true,
-    active_tab = "many_side",
+    active_tab = "owning_side",
     inverse_field_type = nil,
     fetch_type = "lazy",
     collection_type = "set",
@@ -24,7 +24,8 @@ local signal = n.create_signal({
     owning_side_cascades = {},
     inverse_side_cascades = {},
     orphan_removal = true,
-    selected_other = {},
+    owning_side_other = {},
+    inverse_side_other = { "orphan_removal" },
 })
 
 local function render_main_title(subtitle)
@@ -130,7 +131,7 @@ local function render_collection_component(_signal)
     return select_one.render_component(nil, "Collection type", data, "collection_type", _signal)
 end
 
-local function render_other_component(_signal)
+local function render_owning_other_component(_signal)
     local data = {
         n.node({ text = "Mandatory", is_done = false, id = "mandatory" }),
         n.node({ text = "Unique", is_done = false, id = "unique" }),
@@ -140,7 +141,20 @@ local function render_other_component(_signal)
         "Other",
         data,
         _signal,
-        "selected_other"
+        "owning_side_other"
+    )
+end
+
+local function render_inverse_other_component(_signal)
+    local data = {
+        n.node({ text = "Orphan removal", is_done = true, id = "orphan_removal" }),
+    }
+    return select_many.render_component(
+        nil,
+        "Other",
+        data,
+        _signal,
+        "inverse_side_other"
     )
 end
 
@@ -160,7 +174,8 @@ local function render_confirm_button()
                 owning_side_cascades = signal.owning_side_cascades:get_value(),
                 inverse_side_cascades = signal.inverse_side_cascades:get_value(),
                 orphan_removal = signal.orphan_removal:get_value(),
-                selected_other = signal.selected_other:get_value()
+                owning_side_other = signal.owning_side_other:get_value(),
+                inverse_side_other = signal.inverse_side_other:get_value(),
             }
             vim.call("ManyToOneCallback", result)
             renderer:close()
@@ -173,23 +188,23 @@ local function render_component()
     return n.tabs(
         { active_tab = signal.active_tab },
         n.tab(
-            { id = "many_side" },
+            { id = "owning_side" },
             n.rows(
                 { flex = 0 },
-                render_main_title("Many side"),
+                render_main_title("Owning side"),
                 n.gap(1),
                 render_mapping_component(),
                 render_field_type_component(signal, args[2]),
                 render_cascade_component(signal, "owning_side_cascades"),
                 render_fetch_component(signal),
-                render_other_component(signal),
+                render_owning_other_component(signal),
                 n.button({
                     label = "Next",
                     align = "center",
                     global_press_key = "<C-CR>",
                     padding = { top = 1 },
                     on_press = function()
-                        signal.active_tab = "one_side"
+                        signal.active_tab = "inverse_side"
                         signal.confirm_btn_hidden = false
                         renderer:set_size({ height = 15 })
                     end,
@@ -199,20 +214,14 @@ local function render_component()
             )
         ),
         n.tab(
-            { id = "one_side" },
+            { id = "inverse_side" },
             n.rows(
                 { flex = 0 },
-                render_main_title("One side"),
+                render_main_title("Inverse side"),
                 n.gap(1),
                 render_cascade_component(signal, "inverse_side_cascades"),
                 render_collection_component(signal),
-                n.checkbox({
-                    label = "Orphan removal",
-                    value = signal.orphan_removal,
-                    on_change = function(is_checked)
-                        signal.orphan_removal = is_checked
-                    end,
-                }),
+                render_inverse_other_component(signal),
                 n.columns(
                     { flex = 0, align = "center" },
                     n.button({
@@ -222,12 +231,11 @@ local function render_component()
                         global_press_key = "<C-CR>",
                         padding = { top = 1 },
                         on_press = function()
-                            signal.active_tab = "many_side"
+                            signal.active_tab = "owning_side"
                             renderer:set_size({ height = 30 })
                             if signal.mapping_type:get_value() == "unidirectional_join_column" then
                                 signal.confirm_btn_hidden = false
-                            end
-                            if signal.mapping_type:get_value() == "bidirectional_join_column" then
+                            else
                                 signal.confirm_btn_hidden = true
                             end
                         end,

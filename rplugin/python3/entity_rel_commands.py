@@ -38,8 +38,8 @@ class EntityRelationshipCommands(Base):
             inverse_side_type=args[0]["inverse_field_type"],
             owning_side_cascades=args[0]["owning_side_cascades"],
             inverse_side_cascades=args[0]["inverse_side_cascades"],
-            orphan_removal=args[0]["orphan_removal"],
-            selected_other=args[0]["selected_other"],
+            inverse_side_other=args[0]["inverse_side_other"],
+            owning_side_other=args[0]["owning_side_other"],
             debug=True,
         )
 
