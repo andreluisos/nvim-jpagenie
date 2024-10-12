@@ -23,7 +23,7 @@ class PathLib:
         self.spring_root_package_path: str = self.get_spring_root_package_path()
 
     def get_all_jpa_entities(self, debug: bool = False) -> Dict[str, Tuple[str, Path]]:
-        root_path = Path(self.get_spring_project_root_path())
+        root_path = Path(self.get_spring_project_root_path(debug))
         entities_found: Dict[str, Tuple[str, Path]] = {}
         for p in root_path.rglob("*.java"):
             if self.treesitter_lib.is_buffer_jpa_entity(p, debug):
