@@ -151,9 +151,17 @@ local function render_confirm_button()
         global_press_key = "<C-CR>",
         padding = { top = 1 },
         on_press = function()
-            -- TODO: remove print and uncomment call
-            print(vim.inspect(signal:get_value()))
-            -- vim.call("ManyToOneCallback", signal:get_value())
+            local result = {
+                inverse_field_type = signal.inverse_field_type:get_value(),
+                fetch_type = signal.fetch_type:get_value(),
+                collection_type = signal.collection_type:get_value(),
+                mapping_type = signal.mapping_type:get_value(),
+                owning_side_cascades = signal.owning_side_cascades:get_value(),
+                inverse_side_cascades = signal.inverse_side_cascades:get_value(),
+                orphan_removal = signal.orphan_removal:get_value(),
+                selected_other = signal.selected_other:get_value()
+            }
+            vim.call("ManyToOneCallback", result)
             renderer:close()
         end,
         hidden = signal.confirm_btn_hidden
