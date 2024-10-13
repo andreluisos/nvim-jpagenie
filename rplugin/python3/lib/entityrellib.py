@@ -644,12 +644,12 @@ class EntityRelationshipLib:
     def generate_many_to_many_field_template(
         self,
         owning_side_field_type: str,
+        owning_side_package_path: str,
         inverse_side_field_type: str,
         cascade_persist: bool,
         cascade_merge: bool,
         cascade_refresh: bool,
         cascade_detach: bool,
-        collection_type: str,
         owning_side: bool,
         debug: bool = False,
     ) -> str:
@@ -667,12 +667,13 @@ class EntityRelationshipLib:
             join_table_body = self.generate_join_table_body(
                 owning_side_field_type, inverse_side_field_type, debug
             )
-            field_body = self.generate_field_body(
-                inverse_side_field_type, True, collection_type
-            )
+            field_body = self.generate_field_body(inverse_side_field_type, True, "set")
         else:
             field_body = self.generate_field_body(
-                owning_side_field_type, True, collection_type, debug
+                owning_side_field_type, True, "set", debug
+            )
+            self.importings.append(
+                owning_side_package_path + "." + owning_side_field_type
             )
         complete_field_body = "\n" + "\n" + many_to_many_body
         if owning_side:
@@ -841,59 +842,87 @@ class EntityRelationshipLib:
                 debug,
             )
 
-    # def create_many_to_many_relationship_field(
-    #     self,
-    #     owning_side_buffer_path: Path,
-    #     inverse_side_type: str,
-    #     cascade_persist: bool,
-    #     cascade_merge: bool,
-    #     cascade_refresh: bool,
-    #     cascade_detach: bool,
-    #     collection_type: str,
-    #     owning_side: bool,
-    #     debug: bool = False,
-    # ):
-    #     pass
-    # owning_side_field_type: Optional[str] = (
-    #     self.treesitter_lib.get_buffer_class_name(owning_side_buffer_path, debug)
-    # )
-    # if owning_side_field_type is None:
-    #     error_msg = "Could not locate owning side field type"
-    #     self.logging.log(error_msg, "error")
-    #     raise FileNotFoundError(error_msg)
-    # inverse_side_entity_data: Tuple[str, Path] = self.get_entity_data_by_class_name(
-    #     inverse_side_type, debug
-    # )
-    # field_template = self.generate_many_to_many_field_template(
-    #     owning_side_field_type,
-    #     inverse_side_entity_data[0],
-    #     cascade_persist,
-    #     cascade_merge,
-    #     cascade_refresh,
-    #     cascade_detach,
-    #     collection_type,
-    #     True if owning_side else False,
-    #     debug,
-    # )
-    # buffer_bytes = self.treesitter_lib.get_bytes_from_path(
-    #     owning_side_buffer_path if owning_side else inverse_side_entity_data[1],
-    #     debug,
-    # )
-    # field_insert_point = self.treesitter_lib.get_entity_field_insert_point(
-    #     buffer_bytes, debug
-    # )
-    # buffer_bytes = self.treesitter_lib.insert_code_into_position(
-    #     field_template,
-    #     field_insert_point,
-    #     buffer_bytes,
-    #     debug,
-    # )
-    # buffer_bytes = self.add_imports_to_buffer(buffer_bytes, debug)
-    # self.treesitter_lib.update_buffer(
-    #     buffer_bytes,
-    #     owning_side_buffer_path if owning_side else inverse_side_entity_data[1],
-    #     False,
-    #     True,
-    #     True,
-    #     debug,
-    # )
+    def create_many_to_many_relationship_field(
+        self,
+        owning_side_buffer_path: Path,
+        inverse_side_type: str,
+        mapping_type: MappingType,
+        owning_side_cascades: CascadeType,
+        inverse_side_cascades: CascadeType,
+        inverse_side_other: SelectedOther,
+        debug: bool = False,
+    ):
+        pass
+        owning_side_field_data = self.get_entity_data_by_path(
+            owning_side_buffer_path, debug
+        )
+        inverse_side_field_data = self.get_entity_data_by_class_name(
+            inverse_side_type, debug
+        )
+        field_template = self.generate_many_to_many_field_template(
+            owning_side_field_data[0],
+            owning_side_field_data[1],
+            inverse_side_field_data[0],
+            True if "persist" in owning_side_cascades else False,
+            True if "merge" in owning_side_cascades else False,
+            True if "refresh" in owning_side_cascades else False,
+            True if "detach" in owning_side_cascades else False,
+            True,
+            debug,
+        )
+        buffer_bytes = self.treesitter_lib.get_bytes_from_path(
+            owning_side_buffer_path,
+            debug,
+        )
+        field_insert_point = self.treesitter_lib.get_entity_field_insert_point(
+            buffer_bytes, debug
+        )
+        buffer_bytes = self.treesitter_lib.insert_code_into_position(
+            field_template,
+            field_insert_point,
+            buffer_bytes,
+            debug,
+        )
+        buffer_bytes = self.add_imports_to_buffer(buffer_bytes, debug)
+        self.treesitter_lib.update_buffer(
+            buffer_bytes,
+            owning_side_buffer_path,
+            False,
+            True,
+            True,
+            debug,
+        )
+        if mapping_type != "unidirectional_join_column":
+            field_template = self.generate_many_to_many_field_template(
+                owning_side_field_data[0],
+                owning_side_field_data[1],
+                inverse_side_field_data[0],
+                True if "persist" in inverse_side_cascades else False,
+                True if "merge" in inverse_side_cascades else False,
+                True if "refresh" in inverse_side_cascades else False,
+                True if "detach" in inverse_side_cascades else False,
+                False,
+                debug,
+            )
+            buffer_bytes = self.treesitter_lib.get_bytes_from_path(
+                inverse_side_field_data[2],
+                debug,
+            )
+            field_insert_point = self.treesitter_lib.get_entity_field_insert_point(
+                buffer_bytes, debug
+            )
+            buffer_bytes = self.treesitter_lib.insert_code_into_position(
+                field_template,
+                field_insert_point,
+                buffer_bytes,
+                debug,
+            )
+            buffer_bytes = self.add_imports_to_buffer(buffer_bytes, debug)
+            self.treesitter_lib.update_buffer(
+                buffer_bytes,
+                inverse_side_field_data[2],
+                False,
+                True,
+                True,
+                debug,
+            )
