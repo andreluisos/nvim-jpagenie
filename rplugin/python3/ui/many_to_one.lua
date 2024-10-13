@@ -23,7 +23,6 @@ local signal = n.create_signal({
     mapping_type = "unidirectional_join_column",
     owning_side_cascades = {},
     inverse_side_cascades = {},
-    orphan_removal = true,
     owning_side_other = {},
     inverse_side_other = { "orphan_removal" },
 })
