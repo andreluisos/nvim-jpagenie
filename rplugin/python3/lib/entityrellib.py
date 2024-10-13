@@ -227,6 +227,61 @@ class EntityRelationshipLib:
             )
         return snaked_field_name
 
+    def generate_equals_hashcode_methods(
+        self, field_type: str, buffer_path: Path, debug: bool = False
+    ) -> Optional[str]:
+        buffer_has_equals_method = self.treesitter_lib.buffer_has_method(
+            buffer_path, "equals", debug
+        )
+        buffer_has_hashcode_method = self.treesitter_lib.buffer_has_method(
+            buffer_path, "hashCode", debug
+        )
+        snaked_field_name = self.generated_snaked_field_name(field_type, debug)
+        equals_method = f"""
+        @Override
+        public final boolean equals(Object o) {{
+            if (this == o) return true;
+            if (o == null) return false;
+            Class<?> oEffectiveClass =
+                    o instanceof HibernateProxy
+                            ? ((HibernateProxy) o).getHibernateLazyInitializer().getPersistentClass()
+                            : o.getClass();
+            Class<?> thisEffectiveClass =
+                    this instanceof HibernateProxy
+                            ? ((HibernateProxy) this).getHibernateLazyInitializer().getPersistentClass()
+                            : this.getClass();
+            if (thisEffectiveClass != oEffectiveClass) return false;
+            {field_type} {snaked_field_name} = ({field_type}) o;
+            return getId() != null && Objects.equals(getId(), {snaked_field_name}.getId());
+        }}
+        """
+        hashcode_method = """
+        @Override
+        public final int hashCode() {
+            return this instanceof HibernateProxy
+                    ? ((HibernateProxy) this)
+                            .getHibernateLazyInitializer()
+                            .getPersistentClass()
+                            .hashCode()
+                    : getClass().hashCode();
+        }
+        """
+        if debug:
+            self.logging.log(
+                [
+                    f"Buffer has equals method: {buffer_has_equals_method}",
+                    f"Buffer has hashCode method: {buffer_has_hashcode_method}",
+                    f"Snaked field name: {snaked_field_name}",
+                    f"Equals method: {equals_method}",
+                    f"HashCode method: {hashcode_method}",
+                    f"Equals and hashCode added: {str(not buffer_has_hashcode_method and buffer_has_equals_method)}",
+                ],
+                "debug",
+            )
+        if not buffer_has_equals_method and not buffer_has_hashcode_method:
+            return equals_method + "\n" + hashcode_method
+        return None
+
     def generate_one_to_many_annotation_body(
         self,
         one_field_type: str,
@@ -648,10 +703,12 @@ class EntityRelationshipLib:
         owning_side_field_type: str,
         owning_side_package_path: str,
         inverse_side_field_type: str,
+        inverse_side_field_path: Path,
         cascade_persist: bool,
         cascade_merge: bool,
         cascade_refresh: bool,
         cascade_detach: bool,
+        equals_hashcode: bool,
         owning_side: bool,
         debug: bool = False,
     ) -> str:
@@ -681,6 +738,12 @@ class EntityRelationshipLib:
         if owning_side:
             complete_field_body += "\n" + join_table_body
         complete_field_body += "\n" + field_body + "\n"
+        if not owning_side and equals_hashcode:
+            equals_and_hashcode = self.generate_equals_hashcode_methods(
+                inverse_side_field_type, inverse_side_field_path, debug
+            )
+            if equals_and_hashcode is not None:
+                complete_field_body += equals_and_hashcode
         if debug:
             self.logging.log(complete_field_body, "debug")
         return complete_field_body
@@ -865,10 +928,12 @@ class EntityRelationshipLib:
             owning_side_field_data[0],
             owning_side_field_data[1],
             inverse_side_field_data[0],
+            inverse_side_field_data[2],
             True if "persist" in owning_side_cascades else False,
             True if "merge" in owning_side_cascades else False,
             True if "refresh" in owning_side_cascades else False,
             True if "detach" in owning_side_cascades else False,
+            False,
             True,
             debug,
         )
@@ -899,10 +964,12 @@ class EntityRelationshipLib:
                 owning_side_field_data[0],
                 owning_side_field_data[1],
                 inverse_side_field_data[0],
+                inverse_side_field_data[2],
                 True if "persist" in inverse_side_cascades else False,
                 True if "merge" in inverse_side_cascades else False,
                 True if "refresh" in inverse_side_cascades else False,
                 True if "detach" in inverse_side_cascades else False,
+                True if "equals_hashcode" in inverse_side_other else False,
                 False,
                 debug,
             )
