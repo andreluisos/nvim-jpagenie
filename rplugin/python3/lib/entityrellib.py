@@ -64,7 +64,7 @@ class EntityRelationshipLib:
         debug: bool = False,
     ) -> Optional[str]:
         cascades: List[str] = []
-        cascade_param: str
+        cascade_param: Optional[str]
         if cascade_persist:
             cascades.append("PERSIST")
         if cascade_merge:
@@ -79,6 +79,8 @@ class EntityRelationshipLib:
             cascade_param = "cascade = CascadeType.ALL"
         elif len(cascades) == 1:
             cascade_param = f"cascade = CascadeType.{cascades[0]}"
+        elif len(cascades) == 0:
+            cascade_param = None
         else:
             cascade_param = (
                 f"cascade = {{{', '.join([f'CascadeType.{c}' for c in cascades])}}}"
