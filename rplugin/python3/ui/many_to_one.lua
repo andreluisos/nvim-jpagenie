@@ -172,7 +172,6 @@ local function render_confirm_button()
                 mapping_type = signal.mapping_type:get_value(),
                 owning_side_cascades = signal.owning_side_cascades:get_value(),
                 inverse_side_cascades = signal.inverse_side_cascades:get_value(),
-                orphan_removal = signal.orphan_removal:get_value(),
                 owning_side_other = signal.owning_side_other:get_value(),
                 inverse_side_other = signal.inverse_side_other:get_value(),
             }
