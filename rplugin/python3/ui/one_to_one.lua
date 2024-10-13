@@ -76,6 +76,7 @@ local function render_mapping_component()
     local data = {
         n.node({ text = "Unidirectional JoinColumn", is_done = true, id = "unidirectional_join_column" }),
         n.node({ text = "Bidirectional JoinColumn", is_done = false, id = "bidirectional_join_column" }),
+        -- TODO: implement mappedBy
     }
     return n.tree({
         autofocus = true,
@@ -149,7 +150,6 @@ local function render_confirm_button()
         padding = { top = 1 },
         on_press = function()
             local result = {
-                -- TODO: update
                 inverse_field_type = signal.inverse_field_type:get_value(),
                 mapping_type = signal.mapping_type:get_value(),
                 owning_side_cascades = signal.owning_side_cascades:get_value(),
@@ -157,7 +157,6 @@ local function render_confirm_button()
                 owning_side_other = signal.owning_side_other:get_value(),
                 inverse_side_other = signal.inverse_side_other:get_value(),
             }
-            print(vim.inspect(result))
             vim.call("OneToOneCallback", result)
             renderer:close()
         end,
