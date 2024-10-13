@@ -223,7 +223,7 @@ local function render_component()
                 render_collection_component(signal),
                 render_inverse_other_component(signal),
                 n.columns(
-                    { flex = 0, align = "center" },
+                    { flex = 0 },
                     n.button({
                         flex = 1,
                         label = "Previous",
