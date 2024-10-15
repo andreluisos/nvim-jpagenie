@@ -10,7 +10,7 @@ local renderer = n.create_renderer({
 })
 
 local signal = n.create_signal({
-    field_type = "java.lang.String",
+    field_package_path = "java.lang.String",
     field_name = "",
     field_length = "255",
     other = {},
@@ -47,7 +47,7 @@ local function render_main_title()
     )
 end
 
-local function render_field_type_component(_signal, options)
+local function render_field_package_type_component(_signal, options)
     local has_field_length = {
         "java.lang.String",
         "java.net.URL",
@@ -103,8 +103,8 @@ local function render_field_type_component(_signal, options)
             for _, node in ipairs(data) do
                 node.is_done = false
             end
-            selected_node.is_done = true
-            _signal.field_type = selected_node.id
+            selected_node.is_done      = true
+            _signal.field_package_path = selected_node.id
             for _, element in ipairs(has_field_length) do
                 if selected_node.id == element then
                     field_length_hidden = false
@@ -257,17 +257,16 @@ local function render_confirm_button()
         padding = { top = 1 },
         on_press = function()
             local result = {
-                field_type = signal.field_type:get_value(),
+                field_package_path = signal.field_package_path:get_value(),
                 field_name = signal.field_name:get_value(),
                 field_length = signal.field_length:get_value(),
-                other = signal.other:get_value(),
                 field_precision = signal.field_precision:get_value(),
                 field_scale = signal.field_scale:get_value(),
                 field_time_zone_storage = signal.field_time_zone_storage:get_value(),
                 field_temporal = signal.field_temporal:get_value(),
+                other = signal.other:get_value(),
             }
-            print(vim.inspect(result))
-            -- vim.call("GenerateBasicEntityFieldCallback", result)
+            vim.call("CreateBasicEntityFieldCallback", result)
             renderer:close()
         end,
         hidden = signal.confirm_btn_hidden
@@ -280,7 +279,7 @@ local function render_component()
         { flex = 0 },
         render_main_title(),
         n.gap(1),
-        render_field_type_component(signal, args[2]),
+        render_field_package_type_component(signal, args[2]),
         render_text_input_component("Field name", "field_name", false, 1),
         render_text_input_component("Field length", "field_length", "field_length_hidden", 1),
         render_custom_select_one_component(signal, {
