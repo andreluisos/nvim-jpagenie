@@ -19,7 +19,7 @@ class EntityFieldCommands(Base):
             for v in self.java_basic_types
         ]
         self.nvim.exec_lua(
-            self.file_reader.read_ui_file_as_string("basic_field_type.lua"),
+            self.file_reader.read_ui_file_as_string("basic_field.lua"),
             (self.ui_path, data),
         )
 
@@ -48,6 +48,7 @@ class EntityFieldCommands(Base):
             mandatory=True if "mandatory" in args[0]["other"] else False,
             unique=True if "unique" in args[0]["other"] else False,
             large_object=True if "large_object" in args[0]["other"] else False,
+            debug=True,
         )
 
     # @command("GenerateIdField", nargs="*")
