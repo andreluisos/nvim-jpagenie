@@ -23,8 +23,8 @@ local signal = n.create_signal({
     field_time_zone_storage_hidden = true,
     field_scale_hidden = true,
     field_precision_hidden = true,
-    other_extra_hidden = true,
-    other_hidden = false
+    other_extra_hidden = false,
+    other_hidden = true
 })
 
 local function extend_array(t1, t2)
@@ -49,34 +49,34 @@ end
 
 local function render_field_type_component(_signal, options)
     local has_field_length = {
-        "String",
-        "URL",
-        "Locale",
-        "Currency",
-        "Class",
-        "Character%[%]",
+        "java.lang.String",
+        "java.net.URL",
+        "java.util.Locale",
+        "java.util.Currency",
+        "java.lang.Class",
+        "java.lang.Character%[%]",
         "char%[%]",
-        "TimeZone",
-        "ZoneOffset",
+        "java.util.TimeZone",
+        "java.time.ZoneOffset",
     }
     local has_time_zone_storage = {
-        "OffsetDateTime",
-        "OffsetTime",
-        "ZonedDateTime",
+        "java.time.OffsetDateTime",
+        "java.time.OffsetTime",
+        "java.time.ZonedDateTime",
     }
     local has_temporal = {
         "java.util.Date",
-        "Calendar",
+        "java.util.Calendar",
     }
     local has_extra_other = {
-        "String",
-        "Byte%[%]",
+        "java.lang.String",
+        "java.lang.Byte%[%]",
         "byte%[%]",
         "char%[%]",
-        "Character%[%]",
-        "Blob",
-        "Clob",
-        "NClob",
+        "java.lang.Character%[%]",
+        "java.sql.Blob",
+        "java.sql.Clob",
+        "java.sql.NClob",
     }
     local data = {}
     for _, v in ipairs(options) do
@@ -104,28 +104,29 @@ local function render_field_type_component(_signal, options)
                 node.is_done = false
             end
             selected_node.is_done = true
+            _signal.field_type = selected_node.id
             for _, element in ipairs(has_field_length) do
-                if string.find(selected_node.id, element) then
+                if selected_node.id == element then
                     field_length_hidden = false
                 end
             end
             for _, element in ipairs(has_time_zone_storage) do
-                if string.find(selected_node.id, element) then
+                if selected_node.id == element then
                     field_time_zone_storage_hidden = false
                 end
             end
             for _, element in ipairs(has_temporal) do
-                if string.find(selected_node.id, element) then
+                if selected_node.id == element then
                     field_temporal_hidden = false
                 end
             end
             for _, element in ipairs(has_extra_other) do
-                if string.find(selected_node.id, element) then
+                if selected_node.id == element then
                     other_hidden = true
                     other_extra_hidden = false
                 end
             end
-            if string.find(selected_node.id, "BigDecimal") then
+            if selected_node.id == "java.math.BigDecimal" then
                 field_precision_hidden = false
                 field_scale_hidden = false
             end
