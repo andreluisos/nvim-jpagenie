@@ -54,7 +54,12 @@ class EntityFieldCommands(Base):
     @command("CreateEnumEntityField")
     def create_enum_entity_field(self) -> None:
         data = [
-            {"name": f"{v[0]} ({v[1]})", "id": f"{v[2]}"}
+            {
+                "name": f"{v[0]} ({v[1]})",
+                "package_path": f"{v[1]}",
+                "type": f"{v[0]}",
+                "id": f"{v[2]}",
+            }
             for v in self.path_lib.get_all_files_by_declaration_type("enum", True)
         ]
         self.nvim.exec_lua(
@@ -72,8 +77,9 @@ class EntityFieldCommands(Base):
             buffer_bytes=buffer_bytes,
             buffer_path=buffer_path,
             field_package_path=args[0]["field_package_path"],
-            field_name=args[0]["field_name"],
+            field_type=args[0]["field_type"],
             field_length=args[0]["field_length"],
+            enum_type=args[0]["enum_type"],
             mandatory=True if "mandatory" in args[0]["other"] else False,
             unique=True if "unique" in args[0]["other"] else False,
             debug=True,

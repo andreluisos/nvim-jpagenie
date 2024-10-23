@@ -162,9 +162,9 @@ class EntityFieldLib:
     def generate_enum_field_template(
         self,
         field_package_path: str,
-        field_name: str,
+        field_type: str,
         field_length: Optional[int],
-        enum_type: Literal["ORDINAL", "STRING"] = "ORDINAL",
+        enum_type: EnumType = "ORDINAL",
         mandatory: bool = False,
         unique: bool = False,
         debug: bool = False,
@@ -263,7 +263,7 @@ class EntityFieldLib:
         buffer_bytes: bytes,
         buffer_path: Path,
         field_package_path: str,
-        field_name: str,
+        field_type: str,
         field_length: Optional[int],
         enum_type: EnumType = "ORDINAL",
         mandatory: bool = False,
@@ -271,10 +271,9 @@ class EntityFieldLib:
         debug: bool = False,
     ) -> None:
         new_source: bytes
-        field_type = field_package_path.split(".")[-1]
         template = "\n\n" + self.generate_enum_field_template(
-            field_package_path,
-            field_name,
+            field_package_path + "." + field_type,
+            field_type,
             field_length,
             enum_type,
             mandatory,
@@ -304,15 +303,14 @@ class EntityFieldLib:
                 [
                     f"buffer path: {buffer_path}\n"
                     f"field type: {field_type}\n"
-                    f"field name: {field_name}\n"
                     f"enum type: {enum_type}\n"
                     f"lenght: {field_length}\n"
                     f"mandatory: {mandatory}\n"
                     f"unique: {unique}\n"
                     f"insert position: {insert_position}\n"
-                    f"type import path: {importings[2] if len(importings) >=2 else None}\n"
-                    f"enumerated import path: {importings[0]}\n"
-                    f"enumtype import path: {importings[1]}\n"
+                    # f"type import path: {importings[2] if len(importings) >=2 else None}\n"
+                    # f"enumerated import path: {importings[0]}\n"
+                    # f"enumtype import path: {importings[1]}\n"
                     f"template:\n{template}\n"
                     f"buffer before:\n{buffer_bytes.decode('utf-8')}\n"
                     f"buffer after:\n{buffer_bytes.decode('utf-8')}\n"
