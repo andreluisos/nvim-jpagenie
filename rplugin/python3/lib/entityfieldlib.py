@@ -6,6 +6,7 @@ from typing import List, Literal, Optional
 from pynvim.api.nvim import Nvim
 
 from lib.treesitterlib import TreesitterLib
+from lib.commonhelper import CommonHelper
 from util.logging import Logging
 from util.data_types import FieldTimeZoneStorage, FieldTemporal, EnumType
 
@@ -16,21 +17,16 @@ class EntityFieldLib:
         nvim: Nvim,
         java_basic_types: list[tuple],
         treesitter_lib: TreesitterLib,
+        common_helper: CommonHelper,
         logging: Logging,
     ):
         self.nvim = nvim
         self.treesitter_lib = treesitter_lib
         self.logging = logging
         self.java_basic_types = java_basic_types
+        self.common_helper = common_helper
         self.importings: List[str] = []
         self.class_body_query = "(class_body) @body"
-
-    def add_imports_to_buffer(self, buffer_bytes: bytes, debug: bool) -> bytes:
-        updated_buffer_bytes = self.treesitter_lib.insert_import_paths_into_buffer(
-            buffer_bytes, self.importings, debug
-        )
-        self.importings = []
-        return updated_buffer_bytes
 
     def get_available_types(self) -> list[list[str | tuple[str, str | None]]]:
         return [[f"{t[0]} ({t[1]})", t] for t in self.java_basic_types]
@@ -175,6 +171,9 @@ class EntityFieldLib:
     ) -> str:
         template = ""
         enum_body = f"@Enumerated(EnumType.{enum_type})\n"
+        field_name = self.common_helper.generate_field_name(
+            field_type=field_type, plural=False, debug=debug
+        )
         field_template = self.generate_basic_field_template(
             field_package_path,
             field_name,
@@ -228,7 +227,9 @@ class EntityFieldLib:
             large_object=large_object,
             debug=debug,
         )
-        buffer_bytes = self.add_imports_to_buffer(buffer_bytes, debug)
+        buffer_bytes = self.common_helper.add_imports_to_buffer(
+            self.importings, buffer_bytes, debug
+        )
         insert_position = self.treesitter_lib.get_entity_field_insert_point(
             buffer_bytes, debug
         )
