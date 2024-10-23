@@ -1,3 +1,4 @@
+from enum import Enum
 from pathlib import Path
 from re import sub
 from typing import List, Literal, Optional
@@ -6,7 +7,7 @@ from pynvim.api.nvim import Nvim
 
 from lib.treesitterlib import TreesitterLib
 from util.logging import Logging
-from util.data_types import FieldTimeZoneStorage, FieldTemporal
+from util.data_types import FieldTimeZoneStorage, FieldTemporal, EnumType
 
 
 class EntityFieldLib:
@@ -38,12 +39,12 @@ class EntityFieldLib:
         self,
         field_package_path: str,
         field_name: str,
-        field_length: int,
-        field_precision: int,
-        field_scale: int,
+        field_length: Optional[int],
+        field_precision: Optional[int],
+        field_scale: Optional[int],
         field_time_zone_storage: Optional[FieldTimeZoneStorage],
         field_temporal: Optional[FieldTemporal],
-        mandatory: bool = True,
+        mandatory: bool = False,
         unique: bool = False,
         large_object: bool = False,
         debug: bool = False,
@@ -105,7 +106,11 @@ class EntityFieldLib:
                 ["jakarta.persistence.Temporal", "jakarta.persistence.TemporalType"]
             )
             template += f"@Temporal(TemporalType.{field_temporal})\n"
-        if field_package_path == "java.math.BigDecimal":
+        if (
+            field_package_path == "java.math.BigDecimal"
+            and field_precision is not None
+            and field_scale is not None
+        ):
             column_params.extend(
                 [f"precision = {field_precision}", f"scale = {field_scale}"]
             )
@@ -160,33 +165,38 @@ class EntityFieldLib:
 
     def generate_enum_field_template(
         self,
-        field_type: str,
+        field_package_path: str,
         field_name: str,
+        field_length: Optional[int],
         enum_type: Literal["ORDINAL", "STRING"] = "ORDINAL",
-        string_length: int = 2,
-        nullable: bool = False,
+        mandatory: bool = False,
         unique: bool = False,
         debug: bool = False,
     ) -> str:
-        if enum_type == "STRING" and string_length == 0:
-            error_message = "When enum_type is STRING, a valid length must be defined."
-            self.logging.log(error_message, "error")
-            raise ValueError(error_message)
         template = ""
         enum_body = f"@Enumerated(EnumType.{enum_type})\n"
         field_template = self.generate_basic_field_template(
-            field_type, field_name, nullable, unique, debug=debug
+            field_package_path,
+            field_name,
+            field_length,
+            None,
+            None,
+            None,
+            None,
+            mandatory,
+            unique,
+            debug=debug,
         )
         template += enum_body + field_template
-        if debug:
-            self.logging.log(
-                [
-                    f"field type: {field_type}, field name: {field_name}, enum type: {enum_type},"
-                    f"string length: {string_length}, nullable: {nullable}, unique: {unique}"
-                    f"template:\n{template}"
-                ],
-                "debug",
-            )
+        # if debug:
+        #     self.logging.log(
+        #         [
+        #             f"field type: {field_type}, field name: {field_name}, enum type: {enum_type},"
+        #             f"string length: {string_length}, nullable: {nullable}, unique: {unique}"
+        #             f"template:\n{template}"
+        #         ],
+        #         "debug",
+        #     )
         return template
 
     def create_basic_entity_field(
@@ -251,17 +261,24 @@ class EntityFieldLib:
         self,
         buffer_bytes: bytes,
         buffer_path: Path,
-        field_type: str,
+        field_package_path: str,
         field_name: str,
-        enum_type: Literal["ORDINAL", "STRING"] = "ORDINAL",
-        string_length: int = 2,
-        nullable: bool = False,
+        field_length: Optional[int],
+        enum_type: EnumType = "ORDINAL",
+        mandatory: bool = False,
         unique: bool = False,
         debug: bool = False,
     ) -> None:
         new_source: bytes
+        field_type = field_package_path.split(".")[-1]
         template = "\n\n" + self.generate_enum_field_template(
-            field_type, field_name, enum_type, string_length, nullable, unique, debug
+            field_package_path,
+            field_name,
+            field_length,
+            enum_type,
+            mandatory,
+            unique,
+            debug,
         )
         importings: List[str] = [
             "jakarta.persistence.Enumerated",
@@ -288,8 +305,8 @@ class EntityFieldLib:
                     f"field type: {field_type}\n"
                     f"field name: {field_name}\n"
                     f"enum type: {enum_type}\n"
-                    f"lenght: {string_length}\n"
-                    f"nullable: {nullable}\n"
+                    f"lenght: {field_length}\n"
+                    f"mandatory: {mandatory}\n"
                     f"unique: {unique}\n"
                     f"insert position: {insert_position}\n"
                     f"type import path: {importings[2] if len(importings) >=2 else None}\n"

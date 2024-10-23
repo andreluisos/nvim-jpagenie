@@ -1,5 +1,5 @@
 from pathlib import Path
-from typing import Dict, Tuple
+from typing import Dict, List, Literal, Tuple
 
 from lib.treesitterlib import TreesitterLib
 from util.logging import Logging
@@ -40,6 +40,69 @@ class PathLib:
                 [f"{e[0]} - {str(e[1])}" for e in entities_found.items()], "debug"
             )
         return entities_found
+
+    def get_all_files_by_declaration_type(
+        self,
+        declaration_type: Literal["class", "enum", "interface", "annotation", "record"],
+        debug: bool = False,
+    ):
+        declaration_types = {
+            "class": """
+            (
+                (class_declaration
+                    name: (identifier) @class_name
+                ) @class_decl
+            )
+            """,
+            "enum": """
+            (
+                (enum_declaration
+                    name: (identifier) @class_name
+                ) @enum_decl
+            )
+            """,
+            "interface": """
+            (
+                (interface_declaration
+                    name: (identifier) @class_name
+                ) @interface_decl
+            )
+            """,
+            "annotation": """
+            (
+                (annotation_type_declaration
+                    name: (identifier) @class_name
+                ) @annotation_decl
+            )
+            """,
+            "record": """
+            (
+                (record_declaration
+                    name: (identifier) @class_name
+                ) @record_decl
+            )
+            """,
+        }
+        root_path = Path(self.get_spring_project_root_path(debug))
+        found_files: List[Tuple[str, str, Path]] = []
+        for p in root_path.rglob("*.java"):
+            node = self.treesitter_lib.get_node_from_path(p, debug)
+            results = self.treesitter_lib.query_node(
+                node, declaration_types[declaration_type], debug
+            )
+            get_next = False
+            if len(results) > 1:
+                for result in results:
+                    node_text = self.treesitter_lib.get_node_text(result[0])
+                    if get_next:
+                        package_path = self.get_buffer_package_path(p, debug)
+                        found_files.append((node_text, package_path, p))
+                        break
+                    if "public " + declaration_type in node_text:
+                        get_next = True
+        if debug:
+            self.logging.log([x[0] for x in found_files], "debug")
+        return found_files
 
     def get_buffer_package_path(
         self,

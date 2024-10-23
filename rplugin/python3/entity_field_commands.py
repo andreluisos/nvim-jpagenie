@@ -51,6 +51,34 @@ class EntityFieldCommands(Base):
             debug=True,
         )
 
+    @command("CreateEnumEntityField")
+    def create_enum_entity_field(self) -> None:
+        data = [
+            {"name": f"{v[0]} ({v[1]})", "id": f"{v[2]}"}
+            for v in self.path_lib.get_all_files_by_declaration_type("enum", True)
+        ]
+        self.nvim.exec_lua(
+            self.file_reader.read_ui_file_as_string("enum_field.lua"),
+            (self.ui_path, data),
+        )
+
+    @function("CreateEnumEntityFieldCallback")
+    def crease_enum_entity_field_callback(self, args):
+        buffer_bytes = self.treesitter_lib.get_bytes_from_buffer(
+            self.nvim.current.buffer
+        )
+        buffer_path = Path(self.nvim.current.buffer.name)
+        self.entity_field_lib.create_enum_entity_field(
+            buffer_bytes=buffer_bytes,
+            buffer_path=buffer_path,
+            field_package_path=args[0]["field_package_path"],
+            field_name=args[0]["field_name"],
+            field_length=args[0]["field_length"],
+            mandatory=True if "mandatory" in args[0]["other"] else False,
+            unique=True if "unique" in args[0]["other"] else False,
+            debug=True,
+        )
+
     # @command("GenerateIdField", nargs="*")
     # def generate_id_entity_field(self, args: List[str]) -> None:
     #     # arg0 field_type (Long | Integer | String | UUID - java_type)
