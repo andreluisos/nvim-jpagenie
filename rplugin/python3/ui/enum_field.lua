@@ -6,6 +6,8 @@ local n = require("nui-components")
 
 local select_many = require("select_many")
 
+local auto_field_name = require("util.auto_field_name").auto_field_name
+
 local renderer = n.create_renderer({
 	width = 65,
 	height = 20,
@@ -35,16 +37,6 @@ local function render_main_title()
 	)
 end
 
-local function lowercaseFirstChar(str)
-	if str == nil or str == "" then
-		return str
-	else
-		local firstChar = string.lower(string.sub(str, 1, 1))
-		local restOfString = string.sub(str, 2)
-		return firstChar .. restOfString
-	end
-end
-
 local function render_field_type_component(_signal, options)
 	local data = {}
 	for _, v in ipairs(options) do
@@ -67,7 +59,7 @@ local function render_field_type_component(_signal, options)
 			_signal["field_path"] = selected_node.id
 			_signal["field_type"] = selected_node.type
 			_signal["field_package_path"] = selected_node.package_path
-			_signal["field_name"] = lowercaseFirstChar(selected_node.type)
+			_signal["field_name"] = auto_field_name(selected_node.type)
 			tree:render()
 		end,
 		prepare_node = function(node, line, _)
