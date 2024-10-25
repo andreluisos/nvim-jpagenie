@@ -1,9 +1,6 @@
-from enum import Enum
 from pathlib import Path
-from re import sub
 from typing import List, Literal, Optional
 
-from pynvim.api import buffer
 from pynvim.api.nvim import Nvim
 
 from lib.treesitterlib import TreesitterLib
