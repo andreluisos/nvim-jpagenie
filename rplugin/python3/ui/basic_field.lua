@@ -171,9 +171,9 @@ local function render_custom_select_one_component(_signal, _data, _title, _signa
 		end,
 		prepare_node = function(node, line, _)
 			if node.is_done then
-				line:append("x", "String")
+				line:append("◉", "String")
 			else
-				line:append("◻", "Comment")
+				line:append("○", "Comment")
 			end
 			line:append(" ")
 			line:append(node.text)
@@ -240,7 +240,7 @@ local function render_custom_select_many_component(_signal, _data, _title, _sign
 		end,
 		prepare_node = function(node, line, _)
 			if node.is_done then
-				line:append("x", "String")
+				line:append("☑", "String")
 			else
 				line:append("◻", "Comment")
 			end
