@@ -3,6 +3,7 @@ from pynvim.api import Nvim
 from lib.treesitterlib import TreesitterLib
 from pathlib import Path
 
+from re import sub
 from lib.pathlib import PathLib
 from util.logging import Logging
 
@@ -61,3 +62,50 @@ class CommonHelper:
                 [f"Field type: {field_type}", f"Field name: {field_name}"], "debug"
             )
         return field_name
+
+    def generate_snaked_field_name(self, field_name: str, debug: bool = False) -> str:
+        snaked_field_name = sub(r"(?<!^)(?=[A-Z])", "_", field_name).lower()
+        if debug:
+            self.logging.log(
+                [
+                    f"Field name: {field_name}",
+                    f"Snaked field name: {snaked_field_name}",
+                ],
+                "debug",
+            )
+        return snaked_field_name
+
+    def merge_field_params(self, params: List[str], debug: bool = False) -> str:
+        merged_params = ", ".join(params)
+        if debug:
+            self.logging.log([str(params), merged_params], "debug")
+        return ", ".join(params)
+
+    def generate_field_column_line(self, params: List[str], debug: bool = False) -> str:
+        merged_params = self.merge_field_params(params, debug)
+        column_line = f"@Column({merged_params})"
+        if debug:
+            self.logging.log(
+                [
+                    f"Params: {str(params)}",
+                    f"Merged params: {merged_params}",
+                    f"Column line: {column_line}",
+                ],
+                "debug",
+            )
+        return column_line
+
+    def generate_field_body_line(
+        self, field_type: str, field_name: str, debug: bool = False
+    ) -> str:
+        field_body_line = f"private {field_type} {field_name};"
+        if debug:
+            self.logging.log(
+                [
+                    f"Field type: {field_type}",
+                    f"Field name: {field_name}",
+                    f"Field body line: {field_body_line }",
+                ],
+                "debug",
+            )
+        return field_body_line
