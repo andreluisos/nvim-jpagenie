@@ -1,12 +1,18 @@
 from pathlib import Path
-from typing import List, Literal, Optional
+from typing import List, Optional
 
 from pynvim.api.nvim import Nvim
 
 from lib.treesitterlib import TreesitterLib
 from lib.commonhelper import CommonHelper
 from util.logging import Logging
-from util.data_types import FieldTimeZoneStorage, FieldTemporal, EnumType, IdType
+from util.data_types import (
+    FieldTimeZoneStorage,
+    FieldTemporal,
+    EnumType,
+    IdGeneration,
+    IdGenerationType,
+)
 
 
 class EntityFieldLib:
@@ -146,29 +152,61 @@ class EntityFieldLib:
         field_package_path: str,
         field_type: str,
         field_name: str,
-        id_generation: IdType,
+        id_generation: IdGeneration,
+        id_generation_type: Optional[IdGenerationType],
+        generator_name: Optional[str],
+        sequence_name: Optional[str],
+        initial_value: Optional[int],
+        allocation_size: Optional[int],
         mandatory: bool = False,
         debug: bool = False,
     ) -> str:
-        template = ""
-        id_body = "@Id\n"
-        generation_body = ""
-        field_template = self.generate_basic_field_template(
-            field_package_path,
-            field_name,
-            None,
-            None,
-            None,
-            None,
-            None,
-            mandatory,
-            debug=debug,
+        snaked_field_name = self.common_helper.generate_snaked_field_name(
+            field_name, debug
         )
-        if id_generation in ["auto", "identity", "sequence"]:
-            generation_body = (
+        column_params: List[str] = [f'name = "{snaked_field_name}"']
+        template = "@Id\n"
+        self.importings.extend(
+            [
+                "jakarta.persistence.GeneratedValue",
+                "jakarta.persistence.GenerationType",
+                "jakarta.persistence.Id",
+                field_package_path,
+            ]
+        )
+        if mandatory:
+            column_params.append("nullable = true")
+        if id_generation == "sequence":
+            generated_value_body = (
+                f"@GeneratedValue(strategy = GenerationType.{id_generation.upper()}"
+            )
+            if (
+                id_generation == "sequence"
+                and id_generation_type == "entity_exclusive_generation"
+            ):
+                generated_value_body += f', generator = "{generator_name}"'
+                generated_value_body += ")\n"
+                sequence_generator_body = (
+                    f'@SequenceGenerator(name = "{generator_name}", '
+                    f'sequenceName = "{sequence_name}"'
+                )
+                if initial_value != 1 and initial_value is not None:
+                    sequence_generator_body += f", initialValue = {initial_value}"
+                if allocation_size != 50 and allocation_size is not None:
+                    sequence_generator_body += f", allocationSize = {allocation_size}"
+                sequence_generator_body += ")\n"
+                template += generated_value_body + sequence_generator_body
+        if id_generation != "none":
+            template += (
                 f"@GeneratedValue(strategy = GenerationType.{id_generation.upper()})\n"
             )
-        template += id_body + generation_body + field_template
+        column_body = self.common_helper.generate_field_column_line(
+            column_params, debug
+        )
+        field_body = self.common_helper.generate_field_body_line(
+            field_type, field_name, debug
+        )
+        template += column_body + "\n" + field_body + "\n\n"
         if debug:
             self.logging.log(
                 [
@@ -371,52 +409,55 @@ class EntityFieldLib:
         field_package_path: str,
         field_type: str,
         field_name: str,
-        id_generation: Literal["none", "auto", "identity", "sequence"],
+        id_generation: IdGeneration,
+        id_generation_type: Optional[IdGenerationType],
+        generator_name: Optional[str],
+        sequence_name: Optional[str],
+        initial_value: Optional[int],
+        allocation_size: Optional[int],
         mandatory: bool = False,
         debug: bool = False,
     ) -> None:
-        new_source: bytes
-        importings: List[str] = [
-            "jakarta.persistence.GeneratedValue",
-            "jakarta.persistence.GenerationType",
-            "jakarta.persistence.Id",
-        ]
         template = "\n\n" + self.generate_id_field_template(
-            field_package_path, field_type, field_name, id_generation, mandatory, debug
+            field_package_path=field_package_path + "." + field_type,
+            field_type=field_type,
+            field_name=field_name,
+            id_generation=id_generation,
+            id_generation_type=id_generation_type,
+            generator_name=generator_name,
+            sequence_name=sequence_name,
+            initial_value=initial_value,
+            allocation_size=allocation_size,
+            mandatory=mandatory,
+            debug=debug,
+        )
+        buffer_bytes = self.common_helper.add_imports_to_buffer(
+            self.importings, buffer_bytes, debug
         )
         insert_position = self.treesitter_lib.get_entity_field_insert_point(
             buffer_bytes, debug
         )
-        new_source = self.treesitter_lib.insert_code_into_position(
+        buffer_bytes = self.treesitter_lib.insert_code_into_position(
             template, insert_position, buffer_bytes, debug
         )
-        type_import_path = self.treesitter_lib.get_field_type_import_path(
-            field_type, debug
-        )
-        if type_import_path is not None:
-            importings.append(type_import_path)
-        new_source = self.treesitter_lib.insert_import_paths_into_buffer(
-            new_source, importings, debug
+        self.treesitter_lib.update_buffer(
+            buffer_bytes=buffer_bytes,
+            buffer_path=buffer_path,
+            save=False,
+            format=True,
+            organize_imports=True,
         )
         if debug:
             self.logging.log(
                 [
-                    f"buffer path: {buffer_path}\n"
-                    f"field type: {field_type}\n"
-                    f"field name: {field_name}\n"
-                    f"id generation: {id_generation}\n"
-                    f"mandatory: {mandatory}\n"
-                    f"insert position: {insert_position}\n"
-                    f"type import path: {importings[3] if len(importings) >=3 else None}\n"
-                    f"generated value import path: {importings[0]}\n"
-                    f"generation type import path: {importings[1]}\n"
-                    f"id import path: {importings[2]}\n"
-                    f"template:\n{template}\n"
-                    f"buffer before:\n{buffer_bytes.decode('utf-8')}\n"
-                    f"buffer after:\n{buffer_bytes.decode('utf-8')}\n"
+                    f"Buffer path: {buffer_path}\n"
+                    f"Field package path: {field_package_path}\n"
+                    f"Field type: {field_type}\n"
+                    f"Field name: {field_name}\n"
+                    f"Mandatory: {mandatory}\n"
+                    f"Template:\n{template}\n"
+                    f"Buffer before:\n{buffer_bytes.decode('utf-8')}\n"
+                    f"Buffer after:\n{buffer_bytes.decode('utf-8')}\n"
                 ],
                 "debug",
-            )
-            self.treesitter_lib.update_buffer(
-                new_source, buffer_path, False, True, True
             )
