@@ -2,7 +2,7 @@ from pathlib import Path
 
 from pynvim.api.nvim import Nvim
 
-from constants.typing import JAVA_BASIC_TYPES
+from constants.java_basic_types import JAVA_BASIC_TYPES
 from lib.entityfieldlib import EntityFieldLib
 from lib.javafilelib import JavaFileLib
 from lib.jparepolib import JpaRepositoryLib
