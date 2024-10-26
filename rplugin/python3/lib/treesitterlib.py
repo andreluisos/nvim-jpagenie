@@ -88,7 +88,7 @@ class TreesitterLib:
         return is_main_class
 
     def is_buffer_jpa_entity(self, buffer_path: Path, debug: bool = False) -> bool:
-        buffer_node = self.get_node_from_path(buffer_path)
+        buffer_node = self.get_node_from_path(buffer_path, debug)
         results = self.query_node(buffer_node, self.class_annotation_query, debug=debug)
         buffer_is_entity = self.query_results_has_term(results, "Entity", debug=debug)
         if debug:
@@ -100,6 +100,27 @@ class TreesitterLib:
                 "debug",
             )
         return buffer_is_entity
+
+    def buffer_has_method(
+        self, buffer_path: Path, method_name: str, debug: bool = False
+    ) -> bool:
+        query = """
+        (method_declaration
+            name: (identifier) @method_name)
+        """
+        buffer_node = self.get_node_from_path(buffer_path, debug)
+        results = self.query_node(buffer_node, query, debug)
+        buffer_has_method = self.query_results_has_term(results, method_name, debug)
+        if debug:
+            self.logging.log(
+                [
+                    f"Buffer path: {str(buffer_path)}",
+                    f"Method name: {method_name}",
+                    f"Method found: {buffer_has_method}",
+                ],
+                "debug",
+            )
+        return buffer_has_method
 
     def get_bytes_from_path(self, buffer_path: Path, debug: bool = False) -> bytes:
         if debug:

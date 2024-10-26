@@ -1,11 +1,19 @@
 from pathlib import Path
 from re import sub
-from typing import Dict, List, Optional, Tuple
+from typing import List, Optional, Tuple
 
 from lib.pathlib import PathLib
 from lib.treesitterlib import TreesitterLib
 from pynvim.api.nvim import Nvim
+from lib.commonhelper import CommonHelper
 from util.logging import Logging
+from util.data_types import (
+    CollectionType,
+    FetchType,
+    MappingType,
+    CascadeType,
+    SelectedOther,
+)
 
 
 class EntityRelationshipLib:
@@ -14,38 +22,15 @@ class EntityRelationshipLib:
         nvim: Nvim,
         treesitter_lib: TreesitterLib,
         path_lib: PathLib,
+        common_helper: CommonHelper,
         logging: Logging,
     ):
         self.nvim = nvim
         self.treesitter_lib = treesitter_lib
         self.path_lib = path_lib
+        self.common_helper = common_helper
         self.logging = logging
         self.importings: List[str] = []
-
-    def pluralize(self, word: str, debug: bool = False) -> str:
-        pluralized_word: str
-        if word.endswith(("s", "sh", "ch", "x", "z")):
-            pluralized_word = word + "es"
-        elif word.endswith("y") and word[-2] not in "aeiou":
-            pluralized_word = word[:-1] + "ies"
-        elif word.endswith("f"):
-            pluralized_word = word[:-1] + "ves"
-        elif word.endswith("fe"):
-            pluralized_word = word[:-2] + "ves"
-        else:
-            pluralized_word = word + "s"
-        if debug:
-            self.logging.log(
-                [f"Word: {word}", f"Pluralized word: {pluralized_word}"], "debug"
-            )
-        return pluralized_word
-
-    def add_imports_to_buffer(self, buffer_bytes: bytes, debug: bool) -> bytes:
-        updated_buffer_bytes = self.treesitter_lib.insert_import_paths_into_buffer(
-            buffer_bytes, self.importings, debug
-        )
-        self.importings = []
-        return updated_buffer_bytes
 
     def process_cascades_params(
         self,
@@ -57,7 +42,7 @@ class EntityRelationshipLib:
         debug: bool = False,
     ) -> Optional[str]:
         cascades: List[str] = []
-        cascade_param: str
+        cascade_param: Optional[str]
         if cascade_persist:
             cascades.append("PERSIST")
         if cascade_merge:
@@ -72,6 +57,8 @@ class EntityRelationshipLib:
             cascade_param = "cascade = CascadeType.ALL"
         elif len(cascades) == 1:
             cascade_param = f"cascade = CascadeType.{cascades[0]}"
+        elif len(cascades) == 0:
+            cascade_param = None
         else:
             cascade_param = (
                 f"cascade = {{{', '.join([f'CascadeType.{c}' for c in cascades])}}}"
@@ -157,34 +144,16 @@ class EntityRelationshipLib:
             )
         return (collection_name, collection_initialization)
 
-    def get_all_jpa_entities(self, debug: bool = False) -> Dict[str, Path]:
-        root_path = Path(self.path_lib.get_spring_project_root_path())
-        entities_found: Dict[str, Path] = {}
-        for p in root_path.rglob("*.java"):
-            if self.treesitter_lib.is_buffer_jpa_entity(p, debug):
-                entity_path = p
-                entity_node = self.treesitter_lib.get_node_from_path(p, debug)
-                entity_name = self.treesitter_lib.get_buffer_class_name(
-                    entity_node, debug
-                )
-                if entity_name:
-                    entities_found[entity_name] = entity_path
-        if debug:
-            self.logging.log(
-                [f"{e[0]} - {str(e[1])}" for e in entities_found.items()], "debug"
-            )
-        return entities_found
-
     def get_entity_data_by_class_name(
         self,
         class_name: str,
         debug: bool = False,
-    ) -> Tuple[str, Path]:
-        all_entities = self.get_all_jpa_entities(debug)
-        found_entity: Optional[Tuple[str, Path]] = None
-        for entity in all_entities:
-            if entity == class_name:
-                found_entity = (entity, all_entities[entity])
+    ) -> Tuple[str, str, Path]:
+        all_entities = self.path_lib.get_all_jpa_entities(debug)
+        found_entity: Optional[Tuple[str, str, Path]] = None
+        for k, v in all_entities.items():
+            if k == class_name:
+                found_entity = (k, v[0], v[1])
         if debug:
             self.logging.log(f"Buffer data: {str(found_entity)}", "debug")
         if not found_entity:
@@ -197,12 +166,12 @@ class EntityRelationshipLib:
         self,
         buffer_path: Path,
         debug: bool = False,
-    ) -> Tuple[str, Path]:
-        all_entities = self.get_all_jpa_entities(debug)
-        found_entity: Optional[Tuple[str, Path]] = None
-        for entity in all_entities:
-            if entity[1] == buffer_path:
-                found_entity = (entity, all_entities[entity])
+    ) -> Tuple[str, str, Path]:
+        all_entities = self.path_lib.get_all_jpa_entities(debug)
+        found_entity: Optional[Tuple[str, str, Path]] = None
+        for k, v in all_entities.items():
+            if v[1] == buffer_path:
+                found_entity = (k, v[0], v[1])
         if debug:
             self.logging.log(f"Buffer data: {str(found_entity)}", "debug")
         if not found_entity:
@@ -210,19 +179,6 @@ class EntityRelationshipLib:
             self.logging.log(error_msg, "error")
             raise FileNotFoundError(error_msg)
         return found_entity
-
-    def generate_field_name(
-        self, field_type: str, plural: bool = False, debug: bool = False
-    ) -> str:
-        field_name = field_type
-        if plural:
-            field_name = self.pluralize(field_name)
-        field_name = field_name[0].lower() + field_name[1:]
-        if debug:
-            self.logging.log(
-                [f"Field type: {field_type}", f"Field name: {field_name}"], "debug"
-            )
-        return field_name
 
     def generated_snaked_field_name(self, field_type: str, debug: bool = False) -> str:
         snaked_field_name = sub(r"(?<!^)(?=[A-Z])", "_", field_type).lower()
@@ -235,6 +191,61 @@ class EntityRelationshipLib:
                 "debug",
             )
         return snaked_field_name
+
+    def generate_equals_hashcode_methods(
+        self, field_type: str, buffer_path: Path, debug: bool = False
+    ) -> Optional[str]:
+        buffer_has_equals_method = self.treesitter_lib.buffer_has_method(
+            buffer_path, "equals", debug
+        )
+        buffer_has_hashcode_method = self.treesitter_lib.buffer_has_method(
+            buffer_path, "hashCode", debug
+        )
+        snaked_field_name = self.generated_snaked_field_name(field_type, debug)
+        equals_method = f"""
+        @Override
+        public final boolean equals(Object o) {{
+            if (this == o) return true;
+            if (o == null) return false;
+            Class<?> oEffectiveClass =
+                    o instanceof HibernateProxy
+                            ? ((HibernateProxy) o).getHibernateLazyInitializer().getPersistentClass()
+                            : o.getClass();
+            Class<?> thisEffectiveClass =
+                    this instanceof HibernateProxy
+                            ? ((HibernateProxy) this).getHibernateLazyInitializer().getPersistentClass()
+                            : this.getClass();
+            if (thisEffectiveClass != oEffectiveClass) return false;
+            {field_type} {snaked_field_name} = ({field_type}) o;
+            return getId() != null && Objects.equals(getId(), {snaked_field_name}.getId());
+        }}
+        """
+        hashcode_method = """
+        @Override
+        public final int hashCode() {
+            return this instanceof HibernateProxy
+                    ? ((HibernateProxy) this)
+                            .getHibernateLazyInitializer()
+                            .getPersistentClass()
+                            .hashCode()
+                    : getClass().hashCode();
+        }
+        """
+        if debug:
+            self.logging.log(
+                [
+                    f"Buffer has equals method: {buffer_has_equals_method}",
+                    f"Buffer has hashCode method: {buffer_has_hashcode_method}",
+                    f"Snaked field name: {snaked_field_name}",
+                    f"Equals method: {equals_method}",
+                    f"HashCode method: {hashcode_method}",
+                    f"Equals and hashCode added: {str(not buffer_has_hashcode_method and buffer_has_equals_method)}",
+                ],
+                "debug",
+            )
+        if not buffer_has_equals_method and not buffer_has_hashcode_method:
+            return equals_method + "\n" + hashcode_method
+        return None
 
     def generate_one_to_many_annotation_body(
         self,
@@ -258,7 +269,7 @@ class EntityRelationshipLib:
             debug,
         )
         extra_params: str = self.process_extra_params(
-            orphan_removal=True,
+            orphan_removal=orphan_removal,
             mapped_by=self.generated_snaked_field_name(one_field_type),
             debug=debug,
         )
@@ -375,9 +386,9 @@ class EntityRelationshipLib:
         cascade_remove: bool,
         cascade_refresh: bool,
         cascade_detach: bool,
-        optional: bool,
         orphan_removal: bool,
-        mapped_by: Optional[str] = None,
+        optional: bool,
+        inverse_field_type: Optional[str],
         debug: bool = False,
     ):
         body = "@OneToOne"
@@ -391,7 +402,11 @@ class EntityRelationshipLib:
             debug,
         )
         extra_params: str = self.process_extra_params(
-            mapped_by=mapped_by if mapped_by is not None else None,
+            mapped_by=(
+                self.generated_snaked_field_name(inverse_field_type)
+                if inverse_field_type is not None
+                else None
+            ),
             optional=optional,
             orphan_removal=orphan_removal,
             debug=debug,
@@ -487,7 +502,7 @@ class EntityRelationshipLib:
         collection_name: str = ""
         if is_collection and collection_type:
             collection_name = collection_type.title()
-        field_name = self.generate_field_name(
+        field_name = self.common_helper.generate_field_name(
             field_type, True if is_collection else False, debug
         )
         if collection_type == "set":
@@ -525,8 +540,9 @@ class EntityRelationshipLib:
 
     def generate_one_to_many_template(
         self,
+        owning_side_package_path: str,
         owning_side_field_type: str,
-        inverse_side_field_type: str,
+        inverse_field_type: str,
         cascade_persist: bool,
         cascade_merge: bool,
         cascade_remove: bool,
@@ -536,8 +552,9 @@ class EntityRelationshipLib:
         collection_type: str,
         debug: bool = False,
     ) -> str:
+        self.importings.append(owning_side_package_path + "." + owning_side_field_type)
         one_to_many_body = self.generate_one_to_many_annotation_body(
-            inverse_side_field_type,
+            inverse_field_type,
             cascade_persist,
             cascade_merge,
             cascade_remove,
@@ -612,15 +629,17 @@ class EntityRelationshipLib:
         debug: bool = False,
     ) -> str:
         one_to_one_body = self.generate_one_to_one_annotation_body(
-            cascade_persist,
-            cascade_merge,
-            cascade_remove,
-            cascade_refresh,
-            cascade_detach,
-            mandatory,
-            orphan_removal,
-            owning_side_field_type if owning_side_field_type else None,
-            debug,
+            cascade_persist=cascade_persist,
+            cascade_merge=cascade_merge,
+            cascade_remove=cascade_remove,
+            cascade_refresh=cascade_refresh,
+            cascade_detach=cascade_detach,
+            orphan_removal=orphan_removal,
+            optional=mandatory,
+            inverse_field_type=(
+                inverse_side_field_type if owning_side_field_type is not None else None
+            ),
+            debug=debug,
         )
         join_column_body: str = ""
         field_body: str = ""
@@ -647,12 +666,14 @@ class EntityRelationshipLib:
     def generate_many_to_many_field_template(
         self,
         owning_side_field_type: str,
+        owning_side_package_path: str,
         inverse_side_field_type: str,
+        inverse_side_field_path: Path,
         cascade_persist: bool,
         cascade_merge: bool,
         cascade_refresh: bool,
         cascade_detach: bool,
-        collection_type: str,
+        equals_hashcode: bool,
         owning_side: bool,
         debug: bool = False,
     ) -> str:
@@ -670,17 +691,24 @@ class EntityRelationshipLib:
             join_table_body = self.generate_join_table_body(
                 owning_side_field_type, inverse_side_field_type, debug
             )
-            field_body = self.generate_field_body(
-                inverse_side_field_type, True, collection_type
-            )
+            field_body = self.generate_field_body(inverse_side_field_type, True, "set")
         else:
             field_body = self.generate_field_body(
-                owning_side_field_type, True, collection_type, debug
+                owning_side_field_type, True, "set", debug
+            )
+            self.importings.append(
+                owning_side_package_path + "." + owning_side_field_type
             )
         complete_field_body = "\n" + "\n" + many_to_many_body
         if owning_side:
             complete_field_body += "\n" + join_table_body
         complete_field_body += "\n" + field_body + "\n"
+        if not owning_side and equals_hashcode:
+            equals_and_hashcode = self.generate_equals_hashcode_methods(
+                inverse_side_field_type, inverse_side_field_path, debug
+            )
+            if equals_and_hashcode is not None:
+                complete_field_body += equals_and_hashcode
         if debug:
             self.logging.log(complete_field_body, "debug")
         return complete_field_body
@@ -689,30 +717,26 @@ class EntityRelationshipLib:
         self,
         owning_side_buffer_bytes: bytes,
         owning_side_buffer_path: Path,
+        collection_type: CollectionType,
+        fetch_type: FetchType,
+        mapping_type: MappingType,
         inverse_side_type: str,
-        cascade_persist: bool,
-        cascade_merge: bool,
-        cascade_remove: bool,
-        cascade_refresh: bool,
-        cascade_detach: bool,
-        fetch_type: str,
-        mandatory: bool,
-        unique: bool,
+        owning_side_cascades: CascadeType,
+        inverse_side_cascades: CascadeType,
+        inverse_side_other: SelectedOther,
+        owning_side_other: SelectedOther,
         debug: bool = False,
     ):
-        inverse_side_entity_data: Tuple[str, Path] = self.get_entity_data_by_class_name(
-            inverse_side_type, debug
-        )
         field_template = self.generate_many_to_one_template(
-            inverse_side_entity_data[0],
+            inverse_side_type,
             fetch_type,
-            cascade_persist,
-            cascade_merge,
-            cascade_remove,
-            cascade_refresh,
-            cascade_detach,
-            mandatory,
-            unique,
+            True if "persist" in owning_side_cascades else False,
+            True if "merge" in owning_side_cascades else False,
+            True if "remove" in owning_side_cascades else False,
+            True if "refresh" in owning_side_cascades else False,
+            True if "detach" in owning_side_cascades else False,
+            True if "mandatory" in owning_side_other else False,
+            True if "unique" in owning_side_other else False,
             debug,
         )
         field_insert_point = self.treesitter_lib.get_entity_field_insert_point(
@@ -724,112 +748,79 @@ class EntityRelationshipLib:
             owning_side_buffer_bytes,
             debug,
         )
-        buffer_bytes = self.add_imports_to_buffer(buffer_bytes, debug)
+        buffer_bytes = self.common_helper.add_imports_to_buffer(
+            self.importings, buffer_bytes, debug
+        )
         self.treesitter_lib.update_buffer(
             buffer_bytes, owning_side_buffer_path, False, True, True, debug
         )
-
-    def create_one_to_many_relationship_field(
-        self,
-        owning_side_buffer_path: Path,
-        inverse_side_field_type: str,
-        collection_type: str,
-        orphan_removal: bool,
-        cascade_persist: bool,
-        cascade_merge: bool,
-        cascade_remove: bool,
-        cascade_refresh: bool,
-        cascade_detach: bool,
-        debug: bool = False,
-    ):
-        owning_side_entity_name = self.treesitter_lib.get_buffer_class_name(
-            owning_side_buffer_path, debug
-        )
-        if owning_side_entity_name is None:
-            error_msg = "Unable to find owning side entity data"
-            self.logging.log(error_msg, "error")
-            raise FileNotFoundError(error_msg)
-        inverse_side_entity_data: Tuple[str, Path] = self.get_entity_data_by_class_name(
-            inverse_side_field_type, debug
-        )
-        inverse_side_buffer_bytes = self.treesitter_lib.get_bytes_from_path(
-            inverse_side_entity_data[1], debug
-        )
-        inverse_side_field_template = self.generate_one_to_many_template(
-            owning_side_entity_name,
-            inverse_side_entity_data[0],
-            cascade_persist,
-            cascade_merge,
-            cascade_remove,
-            cascade_refresh,
-            cascade_detach,
-            orphan_removal,
-            collection_type,
-            debug,
-        )
-        inverse_side_field_insert_point = (
-            self.treesitter_lib.get_entity_field_insert_point(
+        if mapping_type == "bidirectional_join_column":
+            owning_side_field_data = self.get_entity_data_by_path(
+                owning_side_buffer_path, debug
+            )
+            inverse_side_field_data = self.get_entity_data_by_class_name(
+                inverse_side_type, debug
+            )
+            inverse_side_buffer_bytes = self.treesitter_lib.get_bytes_from_path(
+                inverse_side_field_data[2]
+            )
+            field_template = self.generate_one_to_many_template(
+                owning_side_field_data[1],
+                owning_side_field_data[0],
+                inverse_side_type,
+                True if "persist" in inverse_side_cascades else False,
+                True if "merge" in inverse_side_cascades else False,
+                True if "remove" in inverse_side_cascades else False,
+                True if "refresh" in inverse_side_cascades else False,
+                True if "detach" in inverse_side_cascades else False,
+                True if "orphan_removal" in inverse_side_other else False,
+                collection_type,
+            )
+            field_insert_point = self.treesitter_lib.get_entity_field_insert_point(
                 inverse_side_buffer_bytes, debug
             )
-        )
-        inverse_side_buffer_bytes = self.treesitter_lib.insert_code_into_position(
-            inverse_side_field_template,
-            inverse_side_field_insert_point,
-            inverse_side_buffer_bytes,
-            debug,
-        )
-        inverse_side_buffer_bytes = self.add_imports_to_buffer(
-            inverse_side_buffer_bytes, debug
-        )
-        self.treesitter_lib.update_buffer(
-            inverse_side_buffer_bytes,
-            inverse_side_entity_data[1],
-            False,
-            True,
-            True,
-            debug,
-        )
+            buffer_bytes = self.treesitter_lib.insert_code_into_position(
+                field_template, field_insert_point, inverse_side_buffer_bytes, debug
+            )
+            buffer_bytes = self.common_helper.add_imports_to_buffer(
+                self.importings, buffer_bytes, debug
+            )
+            self.treesitter_lib.update_buffer(
+                buffer_bytes, inverse_side_field_data[2], False, True, True, debug
+            )
 
     def create_one_to_one_relationship_field(
         self,
         owning_side_buffer_path: Path,
         inverse_side_type: str,
-        cascade_persist: bool,
-        cascade_merge: bool,
-        cascade_remove: bool,
-        cascade_refresh: bool,
-        cascade_detach: bool,
-        mandatory: bool,
-        unique: bool,
-        orphan_removal: bool,
-        owning_side: bool,
+        mapping_type: MappingType,
+        owning_side_cascades: CascadeType,
+        inverse_side_cascades: CascadeType,
+        inverse_side_other: SelectedOther,
+        owning_side_other: SelectedOther,
         debug: bool = False,
     ):
-        owning_side_field_type: Optional[str] = (
-            self.treesitter_lib.get_buffer_class_name(owning_side_buffer_path, debug)
+        owning_side_field_data = self.get_entity_data_by_path(
+            owning_side_buffer_path, debug
         )
-        if owning_side_field_type is None:
-            error_msg = "Could not locate owning side field type"
-            self.logging.log(error_msg, "error")
-            raise FileNotFoundError(error_msg)
-        inverse_side_entity_data: Tuple[str, Path] = self.get_entity_data_by_class_name(
+        inverse_side_field_data = self.get_entity_data_by_class_name(
             inverse_side_type, debug
         )
         field_template = self.generate_one_to_one_field_template(
-            inverse_side_entity_data[0],
-            None if owning_side else owning_side_field_type,
-            cascade_persist,
-            cascade_merge,
-            cascade_remove,
-            cascade_refresh,
-            cascade_detach,
-            mandatory,
-            unique,
-            orphan_removal,
+            inverse_side_field_data[0],
+            None,
+            True if "persist" in owning_side_cascades else False,
+            True if "merge" in owning_side_cascades else False,
+            True if "remove" in owning_side_cascades else False,
+            True if "refresh" in owning_side_cascades else False,
+            True if "detach" in owning_side_cascades else False,
+            True if "mandatory" in owning_side_other else False,
+            True if "unique" in owning_side_other else False,
+            True if "orphan_removal" in owning_side_other else False,
             debug,
         )
         buffer_bytes = self.treesitter_lib.get_bytes_from_path(
-            owning_side_buffer_path if owning_side else inverse_side_entity_data[1],
+            owning_side_field_data[2],
             debug,
         )
         field_insert_point = self.treesitter_lib.get_entity_field_insert_point(
@@ -841,51 +832,84 @@ class EntityRelationshipLib:
             buffer_bytes,
             debug,
         )
-        buffer_bytes = self.add_imports_to_buffer(buffer_bytes, debug)
+        buffer_bytes = self.common_helper.add_imports_to_buffer(
+            self.importings, buffer_bytes, debug
+        )
         self.treesitter_lib.update_buffer(
             buffer_bytes,
-            owning_side_buffer_path if owning_side else inverse_side_entity_data[1],
+            owning_side_field_data[2],
             False,
             True,
             True,
             debug,
         )
+        if mapping_type != "unidirectional_join_column":
+            field_template = self.generate_one_to_one_field_template(
+                inverse_side_field_data[0],
+                owning_side_field_data[0],
+                True if "persist" in inverse_side_cascades else False,
+                True if "merge" in inverse_side_cascades else False,
+                True if "remove" in inverse_side_cascades else False,
+                True if "refresh" in inverse_side_cascades else False,
+                True if "detach" in inverse_side_cascades else False,
+                True if "mandatory" in inverse_side_other else False,
+                True if "orphan_removal" in inverse_side_other else False,
+                debug,
+            )
+            buffer_bytes = self.treesitter_lib.get_bytes_from_path(
+                inverse_side_field_data[2],
+                debug,
+            )
+            field_insert_point = self.treesitter_lib.get_entity_field_insert_point(
+                buffer_bytes, debug
+            )
+            buffer_bytes = self.treesitter_lib.insert_code_into_position(
+                field_template,
+                field_insert_point,
+                buffer_bytes,
+                debug,
+            )
+            self.treesitter_lib.update_buffer(
+                buffer_bytes,
+                inverse_side_field_data[2],
+                False,
+                True,
+                True,
+                debug,
+            )
 
     def create_many_to_many_relationship_field(
         self,
         owning_side_buffer_path: Path,
         inverse_side_type: str,
-        cascade_persist: bool,
-        cascade_merge: bool,
-        cascade_refresh: bool,
-        cascade_detach: bool,
-        collection_type: str,
-        owning_side: bool,
+        mapping_type: MappingType,
+        owning_side_cascades: CascadeType,
+        inverse_side_cascades: CascadeType,
+        inverse_side_other: SelectedOther,
         debug: bool = False,
     ):
-        owning_side_field_type: Optional[str] = (
-            self.treesitter_lib.get_buffer_class_name(owning_side_buffer_path, debug)
+        pass
+        owning_side_field_data = self.get_entity_data_by_path(
+            owning_side_buffer_path, debug
         )
-        if owning_side_field_type is None:
-            error_msg = "Could not locate owning side field type"
-            self.logging.log(error_msg, "error")
-            raise FileNotFoundError(error_msg)
-        inverse_side_entity_data: Tuple[str, Path] = self.get_entity_data_by_class_name(
+        inverse_side_field_data = self.get_entity_data_by_class_name(
             inverse_side_type, debug
         )
         field_template = self.generate_many_to_many_field_template(
-            owning_side_field_type,
-            inverse_side_entity_data[0],
-            cascade_persist,
-            cascade_merge,
-            cascade_refresh,
-            cascade_detach,
-            collection_type,
-            True if owning_side else False,
+            owning_side_field_data[0],
+            owning_side_field_data[1],
+            inverse_side_field_data[0],
+            inverse_side_field_data[2],
+            True if "persist" in owning_side_cascades else False,
+            True if "merge" in owning_side_cascades else False,
+            True if "refresh" in owning_side_cascades else False,
+            True if "detach" in owning_side_cascades else False,
+            False,
+            True,
             debug,
         )
         buffer_bytes = self.treesitter_lib.get_bytes_from_path(
-            owning_side_buffer_path if owning_side else inverse_side_entity_data[1],
+            owning_side_buffer_path,
             debug,
         )
         field_insert_point = self.treesitter_lib.get_entity_field_insert_point(
@@ -897,12 +921,52 @@ class EntityRelationshipLib:
             buffer_bytes,
             debug,
         )
-        buffer_bytes = self.add_imports_to_buffer(buffer_bytes, debug)
+        buffer_bytes = self.common_helper.add_imports_to_buffer(
+            self.importings, buffer_bytes, debug
+        )
         self.treesitter_lib.update_buffer(
             buffer_bytes,
-            owning_side_buffer_path if owning_side else inverse_side_entity_data[1],
+            owning_side_buffer_path,
             False,
             True,
             True,
             debug,
         )
+        if mapping_type != "unidirectional_join_column":
+            field_template = self.generate_many_to_many_field_template(
+                owning_side_field_data[0],
+                owning_side_field_data[1],
+                inverse_side_field_data[0],
+                inverse_side_field_data[2],
+                True if "persist" in inverse_side_cascades else False,
+                True if "merge" in inverse_side_cascades else False,
+                True if "refresh" in inverse_side_cascades else False,
+                True if "detach" in inverse_side_cascades else False,
+                True if "equals_hashcode" in inverse_side_other else False,
+                False,
+                debug,
+            )
+            buffer_bytes = self.treesitter_lib.get_bytes_from_path(
+                inverse_side_field_data[2],
+                debug,
+            )
+            field_insert_point = self.treesitter_lib.get_entity_field_insert_point(
+                buffer_bytes, debug
+            )
+            buffer_bytes = self.treesitter_lib.insert_code_into_position(
+                field_template,
+                field_insert_point,
+                buffer_bytes,
+                debug,
+            )
+            buffer_bytes = self.common_helper.add_imports_to_buffer(
+                self.importings, buffer_bytes, debug
+            )
+            self.treesitter_lib.update_buffer(
+                buffer_bytes,
+                inverse_side_field_data[2],
+                False,
+                True,
+                True,
+                debug,
+            )
