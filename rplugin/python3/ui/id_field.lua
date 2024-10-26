@@ -203,7 +203,6 @@ local function render_confirm_button()
 				allocation_size = signal.allocation_size:get_value(),
 				other = signal.other:get_value(),
 			}
-			print(vim.inspect(result))
 			vim.call("CreateIdEntityFieldCallback", result)
 			renderer:close()
 		end,

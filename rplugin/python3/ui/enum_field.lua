@@ -146,7 +146,6 @@ local function render_confirm_button()
 				field_length = signal.field_length:get_value(),
 				other = signal.other:get_value(),
 			}
-			print(vim.inspect(result))
 			vim.call("CreateEnumEntityFieldCallback", result)
 			renderer:close()
 		end,
