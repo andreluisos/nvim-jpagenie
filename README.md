@@ -18,9 +18,9 @@ The project aims to bring some core functionalities from IDEs out there to nvim,
 I'll be slowly developing it. Feel free to contribute.
 
 TODO:
-- [x] Create attribute for enties (still need UI)
-- [x] Create relationship between entities (still need UI)
-- [x] Create JPA repository for an entity (still need UI)
+- [x] Create attribute for enties
+- [x] Create relationship between entities
+- [x] Create JPA repository for an entity
 - [x] Create class/enum/interface/annotation/record (still need UI)
 - [ ] Create an Entity
 - [ ] Create DTO for an entity (WIP)
