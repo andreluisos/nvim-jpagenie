@@ -13,7 +13,6 @@ from utils.common_utils import CommonUtils
 from utils.entity_creation_utils import EntityCreationUtils
 from utils.file_utils import FileUtils
 from utils.ui_utils import UiUtils
-from utils.argvalidator import ArgValidator
 from utils.logging import Logging
 
 
@@ -25,7 +24,6 @@ class Base(object):
         self.file_utils = FileUtils()
         self.java_basic_types = JAVA_BASIC_TYPES
         self.logging = Logging()
-        self.arg_validator = ArgValidator(self.java_basic_types, self.logging)
         self.treesitter_utils = TreesitterUtils(
             self.nvim, self.java_basic_types, self.cwd, self.logging
         )
