@@ -5,10 +5,10 @@ import tree_sitter_java as tsjava
 from pynvim.api import Buffer
 from pynvim.api.nvim import Nvim
 from tree_sitter import Language, Node, Parser
-from util.logging import Logging
+from utils.logging import Logging
 
 
-class TreesitterLib:
+class TreesitterUtils:
     JAVA_LANGUAGE = Language(tsjava.language())
     PARSER = Parser(JAVA_LANGUAGE)
 

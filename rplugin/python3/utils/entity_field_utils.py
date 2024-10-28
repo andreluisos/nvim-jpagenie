@@ -3,10 +3,10 @@ from typing import List, Optional
 
 from pynvim.api.nvim import Nvim
 
-from lib.treesitterlib import TreesitterLib
-from lib.commonhelper import CommonHelper
-from util.logging import Logging
-from util.data_types import (
+from utils.treesitter_utils import TreesitterUtils
+from utils.common_utils import CommonUtils
+from utils.logging import Logging
+from utils.data_types import (
     FieldTimeZoneStorage,
     FieldTemporal,
     EnumType,
@@ -15,20 +15,20 @@ from util.data_types import (
 )
 
 
-class EntityFieldLib:
+class EntityFieldUtils:
     def __init__(
         self,
         nvim: Nvim,
         java_basic_types: list[tuple],
-        treesitter_lib: TreesitterLib,
-        common_helper: CommonHelper,
+        treesitter_utils: TreesitterUtils,
+        common_utils: CommonUtils,
         logging: Logging,
     ):
         self.nvim = nvim
-        self.treesitter_lib = treesitter_lib
+        self.treesitter_utils = treesitter_utils
         self.logging = logging
         self.java_basic_types = java_basic_types
-        self.common_helper = common_helper
+        self.common_utils = common_utils
         self.importings: List[str] = []
         self.class_body_query = "(class_body) @body"
 
@@ -47,7 +47,7 @@ class EntityFieldLib:
         large_object: bool = False,
         debug: bool = False,
     ) -> str:
-        snaked_field_name = self.common_helper.generate_snaked_field_name(
+        snaked_field_name = self.common_utils.generate_snaked_field_name(
             field_name, debug
         )
         column_params: List[str] = [f'name = "{snaked_field_name}"']
@@ -116,10 +116,10 @@ class EntityFieldLib:
             column_params.append("nullable = true")
         if unique:
             column_params.append("unique = true")
-        column_body = self.common_helper.generate_field_column_line(
+        column_body = self.common_utils.generate_field_column_line(
             column_params, debug
         )
-        field_body = self.common_helper.generate_field_body_line(
+        field_body = self.common_utils.generate_field_body_line(
             field_type, field_name, debug
         )
         template += column_body + "\n" + field_body + "\n\n"
@@ -161,7 +161,7 @@ class EntityFieldLib:
         mandatory: bool = False,
         debug: bool = False,
     ) -> str:
-        snaked_field_name = self.common_helper.generate_snaked_field_name(
+        snaked_field_name = self.common_utils.generate_snaked_field_name(
             field_name, debug
         )
         column_params: List[str] = [f'name = "{snaked_field_name}"']
@@ -200,10 +200,10 @@ class EntityFieldLib:
             template += (
                 f"@GeneratedValue(strategy = GenerationType.{id_generation.upper()})\n"
             )
-        column_body = self.common_helper.generate_field_column_line(
+        column_body = self.common_utils.generate_field_column_line(
             column_params, debug
         )
-        field_body = self.common_helper.generate_field_body_line(
+        field_body = self.common_utils.generate_field_body_line(
             field_type, field_name, debug
         )
         template += column_body + "\n" + field_body + "\n\n"
@@ -229,7 +229,7 @@ class EntityFieldLib:
         unique: bool = False,
         debug: bool = False,
     ) -> str:
-        snaked_field_name = self.common_helper.generate_snaked_field_name(
+        snaked_field_name = self.common_utils.generate_snaked_field_name(
             field_name, debug
         )
         column_params: List[str] = [f'name = "{snaked_field_name}"']
@@ -247,10 +247,10 @@ class EntityFieldLib:
             column_params.append("nullable = true")
         if unique:
             column_params.append("unique = true")
-        column_body = self.common_helper.generate_field_column_line(
+        column_body = self.common_utils.generate_field_column_line(
             column_params, debug
         )
-        field_body = self.common_helper.generate_field_body_line(
+        field_body = self.common_utils.generate_field_body_line(
             field_type, field_name, debug
         )
         template += column_body + "\n" + field_body + "\n\n"
@@ -305,23 +305,23 @@ class EntityFieldLib:
             large_object=large_object,
             debug=debug,
         )
-        buffer_bytes = self.common_helper.add_imports_to_buffer(
+        buffer_bytes = self.common_utils.add_imports_to_buffer(
             self.importings, buffer_bytes, debug
         )
-        insert_position = self.treesitter_lib.get_entity_field_insert_point(
+        insert_position = self.treesitter_utils.get_entity_field_insert_point(
             buffer_bytes, debug
         )
-        class_body_position = self.treesitter_lib.query_node(
-            self.treesitter_lib.get_node_from_bytes(buffer_bytes),
+        class_body_position = self.treesitter_utils.query_node(
+            self.treesitter_utils.get_node_from_bytes(buffer_bytes),
             self.class_body_query,
             debug,
         )[0][0].start_byte
         if insert_position < class_body_position:
             insert_position = class_body_position + 1
-        buffer_bytes = self.treesitter_lib.insert_code_into_position(
+        buffer_bytes = self.treesitter_utils.insert_code_into_position(
             template, insert_position, buffer_bytes, debug
         )
-        self.treesitter_lib.update_buffer(
+        self.treesitter_utils.update_buffer(
             buffer_bytes=buffer_bytes,
             buffer_path=buffer_path,
             save=False,
@@ -368,16 +368,16 @@ class EntityFieldLib:
             unique=unique,
             debug=debug,
         )
-        buffer_bytes = self.common_helper.add_imports_to_buffer(
+        buffer_bytes = self.common_utils.add_imports_to_buffer(
             self.importings, buffer_bytes, debug
         )
-        insert_position = self.treesitter_lib.get_entity_field_insert_point(
+        insert_position = self.treesitter_utils.get_entity_field_insert_point(
             buffer_bytes, debug
         )
-        buffer_bytes = self.treesitter_lib.insert_code_into_position(
+        buffer_bytes = self.treesitter_utils.insert_code_into_position(
             template, insert_position, buffer_bytes, debug
         )
-        self.treesitter_lib.update_buffer(
+        self.treesitter_utils.update_buffer(
             buffer_bytes=buffer_bytes,
             buffer_path=buffer_path,
             save=False,
@@ -431,16 +431,16 @@ class EntityFieldLib:
             mandatory=mandatory,
             debug=debug,
         )
-        buffer_bytes = self.common_helper.add_imports_to_buffer(
+        buffer_bytes = self.common_utils.add_imports_to_buffer(
             self.importings, buffer_bytes, debug
         )
-        insert_position = self.treesitter_lib.get_entity_field_insert_point(
+        insert_position = self.treesitter_utils.get_entity_field_insert_point(
             buffer_bytes, debug
         )
-        buffer_bytes = self.treesitter_lib.insert_code_into_position(
+        buffer_bytes = self.treesitter_utils.insert_code_into_position(
             template, insert_position, buffer_bytes, debug
         )
-        self.treesitter_lib.update_buffer(
+        self.treesitter_utils.update_buffer(
             buffer_bytes=buffer_bytes,
             buffer_path=buffer_path,
             save=False,

@@ -2,12 +2,12 @@ from pathlib import Path
 from re import sub
 from typing import List, Optional, Tuple
 
-from lib.pathlib import PathLib
-from lib.treesitterlib import TreesitterLib
+from utils.path_utils import PathUtils
+from utils.treesitter_utils import TreesitterUtils
 from pynvim.api.nvim import Nvim
-from lib.commonhelper import CommonHelper
-from util.logging import Logging
-from util.data_types import (
+from utils.common_utils import CommonUtils
+from utils.logging import Logging
+from utils.data_types import (
     CollectionType,
     FetchType,
     MappingType,
@@ -16,19 +16,19 @@ from util.data_types import (
 )
 
 
-class EntityRelationshipLib:
+class EntityRelationshipUtils:
     def __init__(
         self,
         nvim: Nvim,
-        treesitter_lib: TreesitterLib,
-        path_lib: PathLib,
-        common_helper: CommonHelper,
+        treesitter_utils: TreesitterUtils,
+        path_utils: PathUtils,
+        common_utils: CommonUtils,
         logging: Logging,
     ):
         self.nvim = nvim
-        self.treesitter_lib = treesitter_lib
-        self.path_lib = path_lib
-        self.common_helper = common_helper
+        self.treesitter_utils = treesitter_utils
+        self.path_utils = path_utils
+        self.common_utils = common_utils
         self.logging = logging
         self.importings: List[str] = []
 
@@ -149,7 +149,7 @@ class EntityRelationshipLib:
         class_name: str,
         debug: bool = False,
     ) -> Tuple[str, str, Path]:
-        all_entities = self.path_lib.get_all_jpa_entities(debug)
+        all_entities = self.path_utils.get_all_jpa_entities(debug)
         found_entity: Optional[Tuple[str, str, Path]] = None
         for k, v in all_entities.items():
             if k == class_name:
@@ -167,7 +167,7 @@ class EntityRelationshipLib:
         buffer_path: Path,
         debug: bool = False,
     ) -> Tuple[str, str, Path]:
-        all_entities = self.path_lib.get_all_jpa_entities(debug)
+        all_entities = self.path_utils.get_all_jpa_entities(debug)
         found_entity: Optional[Tuple[str, str, Path]] = None
         for k, v in all_entities.items():
             if v[1] == buffer_path:
@@ -195,10 +195,10 @@ class EntityRelationshipLib:
     def generate_equals_hashcode_methods(
         self, field_type: str, buffer_path: Path, debug: bool = False
     ) -> Optional[str]:
-        buffer_has_equals_method = self.treesitter_lib.buffer_has_method(
+        buffer_has_equals_method = self.treesitter_utils.buffer_has_method(
             buffer_path, "equals", debug
         )
-        buffer_has_hashcode_method = self.treesitter_lib.buffer_has_method(
+        buffer_has_hashcode_method = self.treesitter_utils.buffer_has_method(
             buffer_path, "hashCode", debug
         )
         snaked_field_name = self.generated_snaked_field_name(field_type, debug)
@@ -502,7 +502,7 @@ class EntityRelationshipLib:
         collection_name: str = ""
         if is_collection and collection_type:
             collection_name = collection_type.title()
-        field_name = self.common_helper.generate_field_name(
+        field_name = self.common_utils.generate_field_name(
             field_type, True if is_collection else False, debug
         )
         if collection_type == "set":
@@ -739,19 +739,19 @@ class EntityRelationshipLib:
             True if "unique" in owning_side_other else False,
             debug,
         )
-        field_insert_point = self.treesitter_lib.get_entity_field_insert_point(
+        field_insert_point = self.treesitter_utils.get_entity_field_insert_point(
             owning_side_buffer_bytes, debug
         )
-        buffer_bytes = self.treesitter_lib.insert_code_into_position(
+        buffer_bytes = self.treesitter_utils.insert_code_into_position(
             field_template,
             field_insert_point,
             owning_side_buffer_bytes,
             debug,
         )
-        buffer_bytes = self.common_helper.add_imports_to_buffer(
+        buffer_bytes = self.common_utils.add_imports_to_buffer(
             self.importings, buffer_bytes, debug
         )
-        self.treesitter_lib.update_buffer(
+        self.treesitter_utils.update_buffer(
             buffer_bytes, owning_side_buffer_path, False, True, True, debug
         )
         if mapping_type == "bidirectional_join_column":
@@ -761,7 +761,7 @@ class EntityRelationshipLib:
             inverse_side_field_data = self.get_entity_data_by_class_name(
                 inverse_side_type, debug
             )
-            inverse_side_buffer_bytes = self.treesitter_lib.get_bytes_from_path(
+            inverse_side_buffer_bytes = self.treesitter_utils.get_bytes_from_path(
                 inverse_side_field_data[2]
             )
             field_template = self.generate_one_to_many_template(
@@ -776,16 +776,16 @@ class EntityRelationshipLib:
                 True if "orphan_removal" in inverse_side_other else False,
                 collection_type,
             )
-            field_insert_point = self.treesitter_lib.get_entity_field_insert_point(
+            field_insert_point = self.treesitter_utils.get_entity_field_insert_point(
                 inverse_side_buffer_bytes, debug
             )
-            buffer_bytes = self.treesitter_lib.insert_code_into_position(
+            buffer_bytes = self.treesitter_utils.insert_code_into_position(
                 field_template, field_insert_point, inverse_side_buffer_bytes, debug
             )
-            buffer_bytes = self.common_helper.add_imports_to_buffer(
+            buffer_bytes = self.common_utils.add_imports_to_buffer(
                 self.importings, buffer_bytes, debug
             )
-            self.treesitter_lib.update_buffer(
+            self.treesitter_utils.update_buffer(
                 buffer_bytes, inverse_side_field_data[2], False, True, True, debug
             )
 
@@ -819,23 +819,23 @@ class EntityRelationshipLib:
             True if "orphan_removal" in owning_side_other else False,
             debug,
         )
-        buffer_bytes = self.treesitter_lib.get_bytes_from_path(
+        buffer_bytes = self.treesitter_utils.get_bytes_from_path(
             owning_side_field_data[2],
             debug,
         )
-        field_insert_point = self.treesitter_lib.get_entity_field_insert_point(
+        field_insert_point = self.treesitter_utils.get_entity_field_insert_point(
             buffer_bytes, debug
         )
-        buffer_bytes = self.treesitter_lib.insert_code_into_position(
+        buffer_bytes = self.treesitter_utils.insert_code_into_position(
             field_template,
             field_insert_point,
             buffer_bytes,
             debug,
         )
-        buffer_bytes = self.common_helper.add_imports_to_buffer(
+        buffer_bytes = self.common_utils.add_imports_to_buffer(
             self.importings, buffer_bytes, debug
         )
-        self.treesitter_lib.update_buffer(
+        self.treesitter_utils.update_buffer(
             buffer_bytes,
             owning_side_field_data[2],
             False,
@@ -856,20 +856,20 @@ class EntityRelationshipLib:
                 True if "orphan_removal" in inverse_side_other else False,
                 debug,
             )
-            buffer_bytes = self.treesitter_lib.get_bytes_from_path(
+            buffer_bytes = self.treesitter_utils.get_bytes_from_path(
                 inverse_side_field_data[2],
                 debug,
             )
-            field_insert_point = self.treesitter_lib.get_entity_field_insert_point(
+            field_insert_point = self.treesitter_utils.get_entity_field_insert_point(
                 buffer_bytes, debug
             )
-            buffer_bytes = self.treesitter_lib.insert_code_into_position(
+            buffer_bytes = self.treesitter_utils.insert_code_into_position(
                 field_template,
                 field_insert_point,
                 buffer_bytes,
                 debug,
             )
-            self.treesitter_lib.update_buffer(
+            self.treesitter_utils.update_buffer(
                 buffer_bytes,
                 inverse_side_field_data[2],
                 False,
@@ -908,23 +908,23 @@ class EntityRelationshipLib:
             True,
             debug,
         )
-        buffer_bytes = self.treesitter_lib.get_bytes_from_path(
+        buffer_bytes = self.treesitter_utils.get_bytes_from_path(
             owning_side_buffer_path,
             debug,
         )
-        field_insert_point = self.treesitter_lib.get_entity_field_insert_point(
+        field_insert_point = self.treesitter_utils.get_entity_field_insert_point(
             buffer_bytes, debug
         )
-        buffer_bytes = self.treesitter_lib.insert_code_into_position(
+        buffer_bytes = self.treesitter_utils.insert_code_into_position(
             field_template,
             field_insert_point,
             buffer_bytes,
             debug,
         )
-        buffer_bytes = self.common_helper.add_imports_to_buffer(
+        buffer_bytes = self.common_utils.add_imports_to_buffer(
             self.importings, buffer_bytes, debug
         )
-        self.treesitter_lib.update_buffer(
+        self.treesitter_utils.update_buffer(
             buffer_bytes,
             owning_side_buffer_path,
             False,
@@ -946,23 +946,23 @@ class EntityRelationshipLib:
                 False,
                 debug,
             )
-            buffer_bytes = self.treesitter_lib.get_bytes_from_path(
+            buffer_bytes = self.treesitter_utils.get_bytes_from_path(
                 inverse_side_field_data[2],
                 debug,
             )
-            field_insert_point = self.treesitter_lib.get_entity_field_insert_point(
+            field_insert_point = self.treesitter_utils.get_entity_field_insert_point(
                 buffer_bytes, debug
             )
-            buffer_bytes = self.treesitter_lib.insert_code_into_position(
+            buffer_bytes = self.treesitter_utils.insert_code_into_position(
                 field_template,
                 field_insert_point,
                 buffer_bytes,
                 debug,
             )
-            buffer_bytes = self.common_helper.add_imports_to_buffer(
+            buffer_bytes = self.common_utils.add_imports_to_buffer(
                 self.importings, buffer_bytes, debug
             )
-            self.treesitter_lib.update_buffer(
+            self.treesitter_utils.update_buffer(
                 buffer_bytes,
                 inverse_side_field_data[2],
                 False,

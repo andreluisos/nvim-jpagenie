@@ -19,17 +19,17 @@ class EntityFieldCommands(Base):
             for v in self.java_basic_types
         ]
         self.nvim.exec_lua(
-            self.file_reader.read_ui_file_as_string("basic_field.lua"),
+            self.file_utils.read_ui_file_as_string("basic_field.lua"),
             (self.ui_path, data),
         )
 
     @function("CreateBasicEntityFieldCallback")
     def crease_basic_entity_field_callback(self, args):
-        buffer_bytes = self.treesitter_lib.get_bytes_from_buffer(
+        buffer_bytes = self.treesitter_utils.get_bytes_from_buffer(
             self.nvim.current.buffer
         )
         buffer_path = Path(self.nvim.current.buffer.name)
-        self.entity_field_lib.create_basic_entity_field(
+        self.entity_field_utils.create_basic_entity_field(
             buffer_bytes=buffer_bytes,
             buffer_path=buffer_path,
             field_package_path=args[0]["field_package_path"],
@@ -61,20 +61,20 @@ class EntityFieldCommands(Base):
                 "type": f"{v[0]}",
                 "id": f"{v[2]}",
             }
-            for v in self.path_lib.get_all_files_by_declaration_type("enum", True)
+            for v in self.path_utils.get_all_files_by_declaration_type("enum", True)
         ]
         self.nvim.exec_lua(
-            self.file_reader.read_ui_file_as_string("enum_field.lua"),
+            self.file_utils.read_ui_file_as_string("enum_field.lua"),
             (self.ui_path, data),
         )
 
     @function("CreateEnumEntityFieldCallback")
     def crease_enum_entity_field_callback(self, args):
-        buffer_bytes = self.treesitter_lib.get_bytes_from_buffer(
+        buffer_bytes = self.treesitter_utils.get_bytes_from_buffer(
             self.nvim.current.buffer
         )
         buffer_path = Path(self.nvim.current.buffer.name)
-        self.entity_field_lib.create_enum_entity_field(
+        self.entity_field_utils.create_enum_entity_field(
             buffer_bytes=buffer_bytes,
             buffer_path=buffer_path,
             field_package_path=args[0]["field_package_path"],
@@ -95,23 +95,23 @@ class EntityFieldCommands(Base):
             if v[0] in ["Long", "Integer", "String", "UUID"]
         ]
         buffer_path = Path(self.nvim.current.buffer.name)
-        class_name = self.treesitter_lib.get_buffer_class_name(buffer_path, True)
+        class_name = self.treesitter_utils.get_buffer_class_name(buffer_path, True)
         if class_name:
-            snaked_class_name = self.common_helper.generate_snaked_field_name(
+            snaked_class_name = self.common_utils.generate_snaked_field_name(
                 class_name, True
             )
             self.nvim.exec_lua(
-                self.file_reader.read_ui_file_as_string("id_field.lua"),
+                self.file_utils.read_ui_file_as_string("id_field.lua"),
                 (self.ui_path, data, snaked_class_name),
             )
 
     @function("CreateIdEntityFieldCallback")
     def crease_id_entity_field_callback(self, args):
-        buffer_bytes = self.treesitter_lib.get_bytes_from_buffer(
+        buffer_bytes = self.treesitter_utils.get_bytes_from_buffer(
             self.nvim.current.buffer
         )
         buffer_path = Path(self.nvim.current.buffer.name)
-        self.entity_field_lib.create_id_entity_field(
+        self.entity_field_utils.create_id_entity_field(
             buffer_bytes=buffer_bytes,
             buffer_path=buffer_path,
             field_package_path=args[0]["field_package_path"],

@@ -1,7 +1,7 @@
 from pathlib import Path
 
 
-class FileReader:
+class FileUtils:
     def __init__(self) -> None:
         pass
 

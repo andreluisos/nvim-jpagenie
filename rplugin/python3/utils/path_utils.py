@@ -1,11 +1,11 @@
 from pathlib import Path
 from typing import Dict, List, Literal, Tuple
 
-from lib.treesitterlib import TreesitterLib
-from util.logging import Logging
+from utils.treesitter_utils import TreesitterUtils
+from utils.logging import Logging
 
 
-class PathLib:
+class PathUtils:
     ROOT_FILES = [
         "pom.xml",
         "build.gradle",
@@ -14,10 +14,12 @@ class PathLib:
         "settings.gradle",
     ]
 
-    def __init__(self, cwd: Path, treesitter_lib: TreesitterLib, logging: Logging):
+    def __init__(
+        self, cwd: Path, treesitter_utils: TreesitterUtils, logging: Logging
+    ):
         self.cwd: Path = cwd
         self.logging: Logging = logging
-        self.treesitter_lib: TreesitterLib = treesitter_lib
+        self.treesitter_utils: TreesitterUtils = treesitter_utils
         self.spring_project_root_path: str = self.get_spring_project_root_path()
         self.spring_main_class_path: str = self.get_spring_main_class_path()
         self.spring_root_package_path: str = self.get_spring_root_package_path()
@@ -26,11 +28,11 @@ class PathLib:
         root_path = Path(self.get_spring_project_root_path(debug))
         entities_found: Dict[str, Tuple[str, Path]] = {}
         for p in root_path.rglob("*.java"):
-            if self.treesitter_lib.is_buffer_jpa_entity(p, debug):
+            if self.treesitter_utils.is_buffer_jpa_entity(p, debug):
                 entity_path = p
-                entity_node = self.treesitter_lib.get_node_from_path(p, debug)
+                entity_node = self.treesitter_utils.get_node_from_path(p, debug)
                 entity_package_path = self.get_buffer_package_path(entity_path)
-                entity_name = self.treesitter_lib.get_buffer_class_name(
+                entity_name = self.treesitter_utils.get_buffer_class_name(
                     entity_node, debug
                 )
                 if entity_name:
@@ -86,14 +88,14 @@ class PathLib:
         root_path = Path(self.get_spring_project_root_path(debug))
         found_files: List[Tuple[str, str, Path]] = []
         for p in root_path.rglob("*.java"):
-            node = self.treesitter_lib.get_node_from_path(p, debug)
-            results = self.treesitter_lib.query_node(
+            node = self.treesitter_utils.get_node_from_path(p, debug)
+            results = self.treesitter_utils.query_node(
                 node, declaration_types[declaration_type], debug
             )
             get_next = False
             if len(results) > 1:
                 for result in results:
-                    node_text = self.treesitter_lib.get_node_text(result[0])
+                    node_text = self.treesitter_utils.get_node_text(result[0])
                     if get_next:
                         package_path = self.get_buffer_package_path(p, debug)
                         found_files.append((node_text, package_path, p))
@@ -175,7 +177,7 @@ class PathLib:
     def get_spring_main_class_path(self, debug: bool = False) -> str:
         root_path = Path(self.spring_project_root_path)
         for p in root_path.rglob("*.java"):
-            if self.treesitter_lib.is_buffer_main_class(p, debug):
+            if self.treesitter_utils.is_buffer_main_class(p, debug):
                 if debug:
                     self.logging.log(f"Main class path: {str(p.resolve())}", "debug")
                 return str(p.resolve())

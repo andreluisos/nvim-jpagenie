@@ -11,7 +11,7 @@ class EntityCreationCommands(Base):
 
     @command("CreateNewJpaEntity")
     def create_new_jpa_entity(self) -> None:
-        found_entities = self.entity_creation_helper.fetch_entity_data(debug=True)
+        found_entities = self.entity_creation_utils.fetch_entity_data(debug=True)
         parent_entities = [
             {
                 "name": f"{v[0]} ({v[1]})",
@@ -21,9 +21,9 @@ class EntityCreationCommands(Base):
             }
             for v in found_entities
         ]
-        root_package_path = str(self.path_lib.get_spring_root_package_path(True))
+        root_package_path = str(self.path_utils.get_spring_root_package_path(True))
         self.nvim.exec_lua(
-            self.file_reader.read_ui_file_as_string("create_entity.lua"),
+            self.file_utils.read_ui_file_as_string("create_entity.lua"),
             (
                 self.ui_path,
                 parent_entities,
@@ -34,7 +34,7 @@ class EntityCreationCommands(Base):
 
     @function("CreateNewJpaEntityCallback")
     def many_to_one_callback(self, args):
-        self.entity_creation_helper.create_new_entity(
+        self.entity_creation_utils.create_new_entity(
             package_path=args[0]["package_path"],
             entity_name=args[0]["entity_name"],
             entity_type=args[0]["entity_type"],

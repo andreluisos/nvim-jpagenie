@@ -3,10 +3,10 @@ from pathlib import Path
 from typing import Dict, List, Optional, Tuple
 from pynvim.api import Nvim
 
-from util.logging import Logging
+from utils.logging import Logging
 
 
-class UiUtil:
+class UiUtils:
 
     def __init__(
         self,

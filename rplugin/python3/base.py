@@ -3,18 +3,18 @@ from pathlib import Path
 from pynvim.api.nvim import Nvim
 
 from constants.java_basic_types import JAVA_BASIC_TYPES
-from lib.entityfieldlib import EntityFieldLib
-from lib.javafilelib import JavaFileLib
-from lib.jparepolib import JpaRepositoryLib
-from lib.pathlib import PathLib
-from lib.treesitterlib import TreesitterLib
-from lib.entityrellib import EntityRelationshipLib
-from lib.commonhelper import CommonHelper
-from lib.entity_creation_helper import EntityCreationHelper
-from util.file_reader import FileReader
-from util.ui import UiUtil
-from util.argvalidator import ArgValidator
-from util.logging import Logging
+from utils.entity_field_utils import EntityFieldUtils
+from utils.javafilelib import JavaFileLib
+from utils.jpa_repo_utils import JpaRepositoryUtils
+from utils.path_utils import PathUtils
+from utils.treesitter_utils import TreesitterUtils
+from utils.entity_rel_utils import EntityRelationshipUtils
+from utils.common_utils import CommonUtils
+from utils.entity_creation_utils import EntityCreationUtils
+from utils.file_utils import FileUtils
+from utils.ui_utils import UiUtils
+from utils.argvalidator import ArgValidator
+from utils.logging import Logging
 
 
 class Base(object):
@@ -22,40 +22,42 @@ class Base(object):
         self.nvim = nvim
         self.cwd = Path(self.nvim.funcs.getcwd()).resolve()
         self.ui_path = str(Path(__file__).parent.resolve().joinpath("ui"))
-        self.file_reader = FileReader()
+        self.file_utils = FileUtils()
         self.java_basic_types = JAVA_BASIC_TYPES
         self.logging = Logging()
         self.arg_validator = ArgValidator(self.java_basic_types, self.logging)
-        self.treesitter_lib = TreesitterLib(
+        self.treesitter_utils = TreesitterUtils(
             self.nvim, self.java_basic_types, self.cwd, self.logging
         )
-        self.path_lib = PathLib(self.cwd, self.treesitter_lib, self.logging)
-        self.ui_util = UiUtil(self.nvim, self.logging)
-        self.java_file_lib = JavaFileLib(self.nvim, self.logging, self.treesitter_lib)
-        self.jpa_repo_lib = JpaRepositoryLib(
-            self.nvim, self.treesitter_lib, self.path_lib, self.logging
+        self.path_utils = PathUtils(self.cwd, self.treesitter_utils, self.logging)
+        self.ui_util = UiUtils(self.nvim, self.logging)
+        self.java_file_utils = JavaFileLib(
+            self.nvim, self.logging, self.treesitter_utils
         )
-        self.common_helper = CommonHelper(
-            self.nvim, self.cwd, self.treesitter_lib, self.path_lib, self.logging
+        self.jpa_repo_utils = JpaRepositoryUtils(
+            self.nvim, self.treesitter_utils, self.path_utils, self.logging
         )
-        self.entity_field_lib = EntityFieldLib(
+        self.common_utils = CommonUtils(
+            self.nvim, self.cwd, self.treesitter_utils, self.path_utils, self.logging
+        )
+        self.entity_field_utils = EntityFieldUtils(
             self.nvim,
             self.java_basic_types,
-            self.treesitter_lib,
-            self.common_helper,
+            self.treesitter_utils,
+            self.common_utils,
             self.logging,
         )
-        self.entity_rel_lib = EntityRelationshipLib(
+        self.entity_rel_utils = EntityRelationshipUtils(
             self.nvim,
-            self.treesitter_lib,
-            self.path_lib,
-            self.common_helper,
+            self.treesitter_utils,
+            self.path_utils,
+            self.common_utils,
             self.logging,
         )
-        self.entity_creation_helper = EntityCreationHelper(
+        self.entity_creation_utils = EntityCreationUtils(
             self.nvim,
-            self.treesitter_lib,
-            self.path_lib,
-            self.common_helper,
+            self.treesitter_utils,
+            self.path_utils,
+            self.common_utils,
             self.logging,
         )

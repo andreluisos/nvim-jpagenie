@@ -3,22 +3,22 @@ from pathlib import Path
 from pynvim.api.nvim import Nvim
 from tree_sitter import Node
 
-from lib.pathlib import PathLib
-from lib.treesitterlib import TreesitterLib
-from util.logging import Logging
+from utils.path_utils import PathUtils
+from utils.treesitter_utils import TreesitterUtils
+from utils.logging import Logging
 
 
-class JpaRepositoryLib:
+class JpaRepositoryUtils:
     def __init__(
         self,
         nvim: Nvim,
-        treesitter_lib: TreesitterLib,
-        path_lib: PathLib,
+        treesitter_utils: TreesitterUtils,
+        path_utils: PathUtils,
         logging: Logging,
     ):
         self.nvim = nvim
-        self.treesitter_lib = treesitter_lib
-        self.path_lib = path_lib
+        self.treesitter_utils = treesitter_utils
+        self.path_utils = path_utils
         self.logging = logging
         self.field_declaration_query = """
         (field_declaration
@@ -50,7 +50,7 @@ class JpaRepositoryLib:
     def generate_jpa_repository_template(
         self, class_name: str, package_path: str, id_type: str, debug: bool = False
     ) -> str:
-        id_type_import_path = self.treesitter_lib.get_field_type_import_path(
+        id_type_import_path = self.treesitter_utils.get_field_type_import_path(
             id_type, debug
         )
         boiler_plate = (
@@ -73,10 +73,10 @@ class JpaRepositoryLib:
         return boiler_plate
 
     def check_if_id_field_exists(self, buffer_node: Node, debug: bool = False) -> bool:
-        results = self.treesitter_lib.query_node(
+        results = self.treesitter_utils.query_node(
             buffer_node, self.id_field_annotation_query, debug=debug
         )
-        id_annotation_found = self.treesitter_lib.query_results_has_term(
+        id_annotation_found = self.treesitter_utils.query_results_has_term(
             results, "Id", debug=debug
         )
         if debug:
@@ -92,7 +92,7 @@ class JpaRepositoryLib:
     def get_superclass_query_node(
         self, buffer_node: Node, debug: bool = False
     ) -> Node | None:
-        results = self.treesitter_lib.query_node(
+        results = self.treesitter_utils.query_node(
             buffer_node, self.superclass_query, debug=debug
         )
         if debug:
@@ -111,8 +111,8 @@ class JpaRepositoryLib:
         self, root_path: Path, superclass_name: str, debug: bool = False
     ) -> Node | None:
         for p in root_path.rglob("*.java"):
-            node = self.treesitter_lib.get_node_from_path(p, debug=debug)
-            results = self.treesitter_lib.query_node(
+            node = self.treesitter_utils.get_node_from_path(p, debug=debug)
+            results = self.treesitter_utils.query_node(
                 node, self.class_name_query, debug=debug
             )
             if debug:
@@ -126,7 +126,9 @@ class JpaRepositoryLib:
                 )
             if len(results) == 0:
                 continue
-            class_name = self.treesitter_lib.get_node_text(results[0][0], debug=debug)
+            class_name = self.treesitter_utils.get_node_text(
+                results[0][0], debug=debug
+            )
             if debug:
                 self.logging.log(
                     [
@@ -158,7 +160,7 @@ class JpaRepositoryLib:
                                     for identifier in modifier.children:
                                         if identifier.type == "identifier":
                                             if (
-                                                self.treesitter_lib.get_node_text(
+                                                self.treesitter_utils.get_node_text(
                                                     identifier
                                                 )
                                                 == "Id"
@@ -170,7 +172,7 @@ class JpaRepositoryLib:
                                                         "debug",
                                                     )
                         if id_field_found and field_component.type == "type_identifier":
-                            id_field_type = self.treesitter_lib.get_node_text(
+                            id_field_type = self.treesitter_utils.get_node_text(
                                 field_component
                             )
                             if debug:
@@ -191,7 +193,7 @@ class JpaRepositoryLib:
         debug: bool = False,
     ) -> None:
         file_path = buffer_path.parent.joinpath(f"{class_name}Repository.java")
-        self.treesitter_lib.update_buffer(
+        self.treesitter_utils.update_buffer(
             boiler_plate.encode("utf-8"), file_path, False, True, True
         )
         if debug:
@@ -208,9 +210,11 @@ class JpaRepositoryLib:
         self, root_path: Path, debug: bool = False
     ) -> None:
         buffer_path = Path(self.nvim.current.buffer.name)
-        node = self.treesitter_lib.get_node_from_path(buffer_path, debug=debug)
-        class_name = self.treesitter_lib.get_buffer_class_name(node, debug=debug)
-        package_path = self.path_lib.get_buffer_package_path(buffer_path, debug=debug)
+        node = self.treesitter_utils.get_node_from_path(buffer_path, debug=debug)
+        class_name = self.treesitter_utils.get_buffer_class_name(node, debug=debug)
+        package_path = self.path_utils.get_buffer_package_path(
+            buffer_path, debug=debug
+        )
         if class_name is None:
             error_msg = "Couldn't find the class name for this buffer"
             self.logging.log(
@@ -218,7 +222,7 @@ class JpaRepositoryLib:
                 "error",
             )
             raise FileNotFoundError(error_msg)
-        if not self.treesitter_lib.is_buffer_jpa_entity(buffer_path):
+        if not self.treesitter_utils.is_buffer_jpa_entity(buffer_path):
             error_msg = "Current buffer isn't a JPA entity"
             self.logging.log(
                 error_msg,
@@ -236,7 +240,7 @@ class JpaRepositoryLib:
                     "error",
                 )
                 raise ValueError(error_msg)
-            superclass_name = self.treesitter_lib.get_node_text(
+            superclass_name = self.treesitter_utils.get_node_text(
                 superclass_name_node, debug=debug
             )
             superclass_node = self.find_superclass_file_node(

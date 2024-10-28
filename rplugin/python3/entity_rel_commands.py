@@ -16,20 +16,20 @@ class EntityRelationshipCommands(Base):
         buffer_path = Path(self.nvim.current.buffer.name)
         data = [
             {"name": f"{k} ({v[0]})", "id": k}
-            for k, v in self.path_lib.get_all_jpa_entities().items()
+            for k, v in self.path_utils.get_all_jpa_entities().items()
             if v[1] != buffer_path
         ]
         self.nvim.exec_lua(
-            self.file_reader.read_ui_file_as_string("many_to_one.lua"),
+            self.file_utils.read_ui_file_as_string("many_to_one.lua"),
             (self.ui_path, data),
         )
 
     @function("ManyToOneCallback")
     def many_to_one_callback(self, args):
         current_buffer: Buffer = self.nvim.current.buffer
-        buffer_bytes = self.treesitter_lib.get_bytes_from_buffer(current_buffer)
+        buffer_bytes = self.treesitter_utils.get_bytes_from_buffer(current_buffer)
         buffer_path = Path(self.nvim.current.buffer.name)
-        self.entity_rel_lib.create_many_to_one_relationship_field(
+        self.entity_rel_utils.create_many_to_one_relationship_field(
             owning_side_buffer_bytes=buffer_bytes,
             owning_side_buffer_path=buffer_path,
             collection_type=args[0]["collection_type"],
@@ -48,18 +48,18 @@ class EntityRelationshipCommands(Base):
         buffer_path = Path(self.nvim.current.buffer.name)
         data = [
             {"name": f"{k} ({v[0]})", "id": k}
-            for k, v in self.path_lib.get_all_jpa_entities().items()
+            for k, v in self.path_utils.get_all_jpa_entities().items()
             if v[1] != buffer_path
         ]
         self.nvim.exec_lua(
-            self.file_reader.read_ui_file_as_string("one_to_one.lua"),
+            self.file_utils.read_ui_file_as_string("one_to_one.lua"),
             (self.ui_path, data),
         )
 
     @function("OneToOneCallback")
     def one_to_one_callback(self, args):
         buffer_path = Path(self.nvim.current.buffer.name)
-        self.entity_rel_lib.create_one_to_one_relationship_field(
+        self.entity_rel_utils.create_one_to_one_relationship_field(
             owning_side_buffer_path=buffer_path,
             inverse_side_type=args[0]["inverse_field_type"],
             mapping_type=args[0]["mapping_type"],
@@ -75,18 +75,18 @@ class EntityRelationshipCommands(Base):
         buffer_path = Path(self.nvim.current.buffer.name)
         data = [
             {"name": f"{k} ({v[0]})", "id": k}
-            for k, v in self.path_lib.get_all_jpa_entities().items()
+            for k, v in self.path_utils.get_all_jpa_entities().items()
             if v[1] != buffer_path
         ]
         self.nvim.exec_lua(
-            self.file_reader.read_ui_file_as_string("many_to_many.lua"),
+            self.file_utils.read_ui_file_as_string("many_to_many.lua"),
             (self.ui_path, data),
         )
 
     @function("ManyToManyCallback")
     def many_to_many_callback(self, args):
         buffer_path = Path(self.nvim.current.buffer.name)
-        self.entity_rel_lib.create_many_to_many_relationship_field(
+        self.entity_rel_utils.create_many_to_many_relationship_field(
             owning_side_buffer_path=buffer_path,
             inverse_side_type=args[0]["inverse_field_type"],
             mapping_type=args[0]["mapping_type"],

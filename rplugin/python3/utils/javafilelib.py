@@ -1,15 +1,15 @@
 from pathlib import Path
 from typing import Literal
 
-from lib.treesitterlib import TreesitterLib
-from util.logging import Logging
+from utils.treesitter_utils import TreesitterUtils
+from utils.logging import Logging
 
 
 class JavaFileLib:
-    def __init__(self, nvim, logging: Logging, treesitter_lib: TreesitterLib):
+    def __init__(self, nvim, logging: Logging, treesitter_utils: TreesitterUtils):
         self.nvim = nvim
         self.logging = logging
-        self.treesitter_lib = treesitter_lib
+        self.treesitter_utils = treesitter_utils
 
     def get_boiler_plate(
         self, file_type: str, package_path: str, file_name: str, debug: bool = False
@@ -90,4 +90,4 @@ class JavaFileLib:
     ) -> None:
         boiler_plate = self.get_boiler_plate(file_type, package_path, file_name, debug)
         file_path = self.get_file_path(main_class_path, package_path, file_name, debug)
-        self.treesitter_lib.update_buffer(boiler_plate, file_path, False, True, True)
+        self.treesitter_utils.update_buffer(boiler_plate, file_path, False, True, True)

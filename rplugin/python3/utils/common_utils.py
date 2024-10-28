@@ -1,32 +1,32 @@
 from typing import List
 from pynvim.api import Nvim
-from lib.treesitterlib import TreesitterLib
+from utils.treesitter_utils import TreesitterUtils
 from pathlib import Path
 
 from re import sub
-from lib.pathlib import PathLib
-from util.logging import Logging
+from utils.path_utils import PathUtils
+from utils.logging import Logging
 
 
-class CommonHelper:
+class CommonUtils:
     def __init__(
         self,
         nvim: Nvim,
         cwd: Path,
-        treesitter_lib: TreesitterLib,
-        path_lib: PathLib,
+        treesitter_utils: TreesitterUtils,
+        path_utils: PathUtils,
         logging: Logging,
     ) -> None:
         self.nvim = nvim
         self.cwd = cwd
-        self.treesitter_lib = treesitter_lib
+        self.treesitter_utils = treesitter_utils
         self.logging = logging
-        self.path_lib = path_lib
+        self.path_utils = path_utils
 
     def add_imports_to_buffer(
         self, import_list: List[str], buffer_bytes: bytes, debug: bool
     ) -> bytes:
-        updated_buffer_bytes = self.treesitter_lib.insert_import_paths_into_buffer(
+        updated_buffer_bytes = self.treesitter_utils.insert_import_paths_into_buffer(
             buffer_bytes, import_list, debug
         )
         import_list = []

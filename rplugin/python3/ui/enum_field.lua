@@ -6,7 +6,7 @@ local n = require("nui-components")
 
 local select_many = require("select_many")
 
-local auto_field_name = require("util.auto_field_name").auto_field_name
+local auto_field_name = require("utils.auto_field_name").auto_field_name
 
 local renderer = n.create_renderer({
 	width = 65,

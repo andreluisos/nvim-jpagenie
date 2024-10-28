@@ -2,27 +2,27 @@ from pathlib import Path
 from typing import List, Optional, Tuple
 from pynvim.api.nvim import Nvim
 
-from lib.treesitterlib import TreesitterLib
-from lib.commonhelper import CommonHelper
-from lib.pathlib import PathLib
-from util.data_types import EntityType
-from util.logging import Logging
+from utils.treesitter_utils import TreesitterUtils
+from utils.common_utils import CommonUtils
+from utils.path_utils import PathUtils
+from utils.data_types import EntityType
+from utils.logging import Logging
 
 
-class EntityCreationHelper:
+class EntityCreationUtils:
     def __init__(
         self,
         nvim: Nvim,
-        treesitter_lib: TreesitterLib,
-        path_lib: PathLib,
-        common_helper: CommonHelper,
+        treesitter_utils: TreesitterUtils,
+        path_utils: PathUtils,
+        common_utils: CommonUtils,
         logging: Logging,
     ):
         self.nvim = nvim
-        self.treesitter_lib = treesitter_lib
-        self.path_lib = path_lib
+        self.treesitter_utils = treesitter_utils
+        self.path_utils = path_utils
         self.logging = logging
-        self.common_helper = common_helper
+        self.common_utils = common_utils
         self.importings: List[str] = []
 
     def fetch_entity_data(self, debug: bool = False):
@@ -45,18 +45,18 @@ class EntityCreationHelper:
         (#match? @annotation_name "^(Entity|Table|MappedSuperclass)$")
         )
         """
-        root_path = Path(self.path_lib.get_spring_project_root_path(debug))
+        root_path = Path(self.path_utils.get_spring_project_root_path(debug))
         parent_entities_found: List[Tuple[str, str, Path]] = []
         for p in root_path.rglob("*.java"):
-            buffer_node = self.treesitter_lib.get_node_from_path(p, debug)
-            parent_results = self.treesitter_lib.query_node(
+            buffer_node = self.treesitter_utils.get_node_from_path(p, debug)
+            parent_results = self.treesitter_utils.query_node(
                 buffer_node, parent_query, debug
             )
             if len(parent_results) >= 1:
-                entity_name = self.treesitter_lib.get_node_text(
+                entity_name = self.treesitter_utils.get_node_text(
                     parent_results[len(parent_results) - 1][0], debug
                 )
-                package_path = self.path_lib.get_buffer_package_path(p, debug)
+                package_path = self.path_utils.get_buffer_package_path(p, debug)
                 parent_entities_found.append((entity_name, package_path, p))
         self.logging.log(
             [str(r) for r in parent_entities_found],
@@ -98,7 +98,7 @@ class EntityCreationHelper:
         debug: bool = False,
     ) -> str:
         self.importings.append("jakarta.persistence.Table")
-        snaked_entity_name = self.common_helper.generate_snaked_field_name(
+        snaked_entity_name = self.common_utils.generate_snaked_field_name(
             entity_name, debug
         )
         if entity_name == "User":
@@ -143,7 +143,7 @@ class EntityCreationHelper:
         parent_entity_package_path: Optional[str],
         debug: bool = False,
     ):
-        main_class_path = self.path_lib.get_spring_main_class_path(debug)
+        main_class_path = self.path_utils.get_spring_main_class_path(debug)
         base_path = self.get_base_path(main_class_path)
         relative_path = self.get_relative_path(package_path)
         final_path = self.construct_file_path(
@@ -162,14 +162,14 @@ class EntityCreationHelper:
             parent_entity_package_path=parent_entity_package_path,
             debug=debug,
         )
-        buffer_bytes = self.treesitter_lib.get_bytes_from_path(final_path, debug)
-        buffer_bytes = self.treesitter_lib.insert_code_into_position(
+        buffer_bytes = self.treesitter_utils.get_bytes_from_path(final_path, debug)
+        buffer_bytes = self.treesitter_utils.insert_code_into_position(
             template, 0, buffer_bytes, debug
         )
-        buffer_bytes = self.common_helper.add_imports_to_buffer(
+        buffer_bytes = self.common_utils.add_imports_to_buffer(
             self.importings, buffer_bytes, debug
         )
-        self.treesitter_lib.update_buffer(
+        self.treesitter_utils.update_buffer(
             buffer_bytes=buffer_bytes,
             buffer_path=final_path,
             save=False,
