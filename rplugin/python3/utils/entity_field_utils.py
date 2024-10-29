@@ -116,9 +116,7 @@ class EntityFieldUtils:
             column_params.append("nullable = true")
         if unique:
             column_params.append("unique = true")
-        column_body = self.common_utils.generate_field_column_line(
-            column_params, debug
-        )
+        column_body = self.common_utils.generate_field_column_line(column_params, debug)
         field_body = self.common_utils.generate_field_body_line(
             field_type, field_name, debug
         )
@@ -126,17 +124,6 @@ class EntityFieldUtils:
         if debug:
             self.logging.log(
                 [
-                    f"Field package path: {field_package_path}",
-                    f"Field type: {field_type}",
-                    f"Field name: {field_name}",
-                    f"Field lenght: {field_length}",
-                    f"Field precision: {field_precision}",
-                    f"Field scale: {field_scale}",
-                    f"Field time zone storage: {field_time_zone_storage}",
-                    f"Field temporal: {field_temporal}",
-                    f"Large object: {large_object}",
-                    f"Mandatory: {mandatory}",
-                    f"Unique: {unique}",
                     f"Snaked field name: {snaked_field_name}",
                     f"Raw column params: {str(column_params)}",
                     f"Column body: {column_body}",
@@ -200,9 +187,7 @@ class EntityFieldUtils:
             template += (
                 f"@GeneratedValue(strategy = GenerationType.{id_generation.upper()})\n"
             )
-        column_body = self.common_utils.generate_field_column_line(
-            column_params, debug
-        )
+        column_body = self.common_utils.generate_field_column_line(column_params, debug)
         field_body = self.common_utils.generate_field_body_line(
             field_type, field_name, debug
         )
@@ -210,9 +195,11 @@ class EntityFieldUtils:
         if debug:
             self.logging.log(
                 [
-                    f"field name: {field_name}, "
-                    f"id generation: {id_generation}, mandatory: {mandatory}"
-                    f"template:\n{template}"
+                    f"Snaked field name: {snaked_field_name}",
+                    f"Raw column params: {str(column_params)}",
+                    f"Column body: {column_body}",
+                    f"Field body: {field_body}",
+                    f"Final template: {template}",
                 ],
                 "debug",
             )
@@ -247,9 +234,7 @@ class EntityFieldUtils:
             column_params.append("nullable = true")
         if unique:
             column_params.append("unique = true")
-        column_body = self.common_utils.generate_field_column_line(
-            column_params, debug
-        )
+        column_body = self.common_utils.generate_field_column_line(column_params, debug)
         field_body = self.common_utils.generate_field_body_line(
             field_type, field_name, debug
         )
@@ -257,13 +242,6 @@ class EntityFieldUtils:
         if debug:
             self.logging.log(
                 [
-                    f"Field package path: {field_package_path}",
-                    f"Field type: {field_type}",
-                    f"Field name: {field_name}",
-                    f"Field lenght: {field_length}",
-                    f"Enum type: {enum_type}",
-                    f"Mandatory: {mandatory}",
-                    f"Unique: {unique}",
                     f"Snaked field name: {snaked_field_name}",
                     f"Raw column params: {str(column_params)}",
                     f"Column body: {column_body}",
@@ -331,13 +309,6 @@ class EntityFieldUtils:
         if debug:
             self.logging.log(
                 [
-                    f"Buffer path: {buffer_path}\n"
-                    f"Field package path: {field_package_path}\n"
-                    f"Field type: {field_type}\n"
-                    f"Field name: {field_name}\n"
-                    f"Field lenght: {field_length}\n"
-                    f"Mandatory: {mandatory}\n"
-                    f"Unique: {unique}\n"
                     f"Template:\n{template}\n"
                     f"Buffer before:\n{buffer_bytes.decode('utf-8')}\n"
                     f"Buffer after:\n{buffer_bytes.decode('utf-8')}\n"
@@ -387,14 +358,6 @@ class EntityFieldUtils:
         if debug:
             self.logging.log(
                 [
-                    f"Buffer path: {buffer_path}\n"
-                    f"Field package path: {field_package_path}\n"
-                    f"Field type: {field_type}\n"
-                    f"Field name: {field_name}\n"
-                    f"Enum type: {enum_type}\n"
-                    f"Field lenght: {field_length}\n"
-                    f"Mandatory: {mandatory}\n"
-                    f"Unique: {unique}\n"
                     f"Template:\n{template}\n"
                     f"Buffer before:\n{buffer_bytes.decode('utf-8')}\n"
                     f"Buffer after:\n{buffer_bytes.decode('utf-8')}\n"
@@ -450,11 +413,6 @@ class EntityFieldUtils:
         if debug:
             self.logging.log(
                 [
-                    f"Buffer path: {buffer_path}\n"
-                    f"Field package path: {field_package_path}\n"
-                    f"Field type: {field_type}\n"
-                    f"Field name: {field_name}\n"
-                    f"Mandatory: {mandatory}\n"
                     f"Template:\n{template}\n"
                     f"Buffer before:\n{buffer_bytes.decode('utf-8')}\n"
                     f"Buffer after:\n{buffer_bytes.decode('utf-8')}\n"

@@ -62,12 +62,7 @@ class JpaRepositoryUtils:
         boiler_plate += f"public interface {class_name}Repository extends JpaRepository<{class_name}, {id_type}> {{}}"
         if debug:
             self.logging.log(
-                [
-                    f"Class name: {class_name}",
-                    f"Package path: {package_path}",
-                    f"Id type: {id_type}",
-                    f"Boiler plate:\n{boiler_plate}",
-                ],
+                f"Boiler plate:\n{boiler_plate}",
                 "debug",
             )
         return boiler_plate
@@ -81,10 +76,7 @@ class JpaRepositoryUtils:
         )
         if debug:
             self.logging.log(
-                [
-                    f"Buffer node: {buffer_node}",
-                    f"ID annotation found: {id_annotation_found}",
-                ],
+                f"ID annotation found: {id_annotation_found}",
                 "debug",
             )
         return id_annotation_found
@@ -97,10 +89,7 @@ class JpaRepositoryUtils:
         )
         if debug:
             self.logging.log(
-                [
-                    f"Buffer node: {buffer_node}",
-                    f"Superclass query results: {results}",
-                ],
+                f"Superclass query results: {results}",
                 "debug",
             )
         if len(results) == 0:
@@ -126,9 +115,7 @@ class JpaRepositoryUtils:
                 )
             if len(results) == 0:
                 continue
-            class_name = self.treesitter_utils.get_node_text(
-                results[0][0], debug=debug
-            )
+            class_name = self.treesitter_utils.get_node_text(results[0][0], debug=debug)
             if debug:
                 self.logging.log(
                     [
@@ -141,6 +128,7 @@ class JpaRepositoryUtils:
         return None
 
     def find_id_field_type(self, buffer_node: Node, debug: bool = False) -> str | None:
+        # TODO: refactor
         child_nodes = buffer_node.children
         for child in child_nodes:
             if child.type != "class_declaration":
@@ -198,11 +186,7 @@ class JpaRepositoryUtils:
         )
         if debug:
             self.logging.log(
-                [
-                    f"Class name: {class_name}",
-                    f"JPA repository path: {file_path}",
-                    f"Boiler plate: {boiler_plate}",
-                ],
+                f"JPA repository path: {file_path}",
                 "debug",
             )
 
@@ -212,9 +196,7 @@ class JpaRepositoryUtils:
         buffer_path = Path(self.nvim.current.buffer.name)
         node = self.treesitter_utils.get_node_from_path(buffer_path, debug=debug)
         class_name = self.treesitter_utils.get_buffer_class_name(node, debug=debug)
-        package_path = self.path_utils.get_buffer_package_path(
-            buffer_path, debug=debug
-        )
+        package_path = self.path_utils.get_buffer_package_path(buffer_path, debug=debug)
         if class_name is None:
             error_msg = "Couldn't find the class name for this buffer"
             self.logging.log(
@@ -281,3 +263,8 @@ class JpaRepositoryUtils:
                 boiler_plate=boiler_plate,
                 debug=debug,
             )
+            if debug:
+                self.logging.log(
+                    f"Boiler plate:\n{boiler_plate}\n",
+                    "debug",
+                )

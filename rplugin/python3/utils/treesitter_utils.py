@@ -64,15 +64,7 @@ class TreesitterUtils:
         if format and not save:
             self.nvim.command("lua vim.lsp.buf.format({ async = true })")
         if debug:
-            self.logging.log(
-                [
-                    f"Buffer:\n{buffer_bytes.decode('utf-8')}",
-                    f"Buffer path: {str(buffer_path)}",
-                    f"Format: {format}",
-                    f"Organize imports: {organize_imports}",
-                ],
-                "debug",
-            )
+            self.logging.log([], "debug")
 
     def is_buffer_main_class(self, buffer_path: Path, debug: bool = False) -> bool:
         buffer_node = self.get_node_from_path(buffer_path, debug)
@@ -93,10 +85,7 @@ class TreesitterUtils:
         buffer_is_entity = self.query_results_has_term(results, "Entity", debug=debug)
         if debug:
             self.logging.log(
-                [
-                    f"buffer path: {str(buffer_path)}",
-                    f"Buffer is {'not ' if not buffer_is_entity else ' '}JPA entity",
-                ],
+                f"Buffer is {'not ' if not buffer_is_entity else ' '}JPA entity",
                 "debug",
             )
         return buffer_is_entity
@@ -113,35 +102,31 @@ class TreesitterUtils:
         buffer_has_method = self.query_results_has_term(results, method_name, debug)
         if debug:
             self.logging.log(
-                [
-                    f"Buffer path: {str(buffer_path)}",
-                    f"Method name: {method_name}",
-                    f"Method found: {buffer_has_method}",
-                ],
+                f"Method found: {buffer_has_method}",
                 "debug",
             )
         return buffer_has_method
 
     def get_bytes_from_path(self, buffer_path: Path, debug: bool = False) -> bytes:
         if debug:
-            self.logging.log(f"Buffer path: {str(buffer_path)}", "debug")
+            self.logging.log([], "debug")
         return buffer_path.read_text(encoding="utf-8").encode("utf-8")
 
     def get_node_from_path(self, buffer_path: Path, debug: bool = False) -> Node:
         if debug:
-            self.logging.log(f"Buffer path: {str(buffer_path)}", "debug")
+            self.logging.log([], "debug")
         buffer = self.get_bytes_from_path(buffer_path, debug=debug)
         return self.PARSER.parse(buffer).root_node
 
     def get_node_from_bytes(self, buffer_bytes: bytes, debug: bool = False) -> Node:
         if debug:
-            self.logging.log(f"Buffer:\n {buffer_bytes.decode('utf-8')}", "debug")
+            self.logging.log([], "debug")
         return self.PARSER.parse(buffer_bytes).root_node
 
     def get_bytes_from_buffer(self, buffer: Buffer, debug: bool = False) -> bytes:
         buffer_bytes = "\n".join(buffer[:]).encode("utf-8")
         if debug:
-            self.logging.log(f"Buffer:\n{buffer_bytes.decode('utf-8')}", "debug")
+            self.logging.log([], "debug")
         return buffer_bytes
 
     def get_node_text(self, node: Node, debug: bool = False) -> str:
@@ -254,7 +239,8 @@ class TreesitterUtils:
                     "debug",
                 )
             return class_name
-        self.logging.log("No class name found", "debug")
+        if debug:
+            self.logging.log("No class name found", "debug")
         return None
 
     def get_field_type_import_path(

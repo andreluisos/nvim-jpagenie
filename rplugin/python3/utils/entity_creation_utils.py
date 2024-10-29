@@ -59,21 +59,25 @@ class EntityCreationUtils:
                 package_path = self.path_utils.get_buffer_package_path(p, debug)
                 parent_entities_found.append((entity_name, package_path, p))
         self.logging.log(
-            [str(r) for r in parent_entities_found],
+            ["Found entities:\n"] + [str(r) for r in parent_entities_found],
             "debug",
         )
         return parent_entities_found
 
-    def get_base_path(self, main_class_path: str) -> Path:
+    def get_base_path(self, main_class_path: str, debug: bool = False) -> Path:
         base_path = Path(main_class_path).parent
+        if debug:
+            self.logging.log(f"Base path: {str(base_path)}", "debug")
         return base_path
 
-    def get_relative_path(self, package_path: str) -> Path:
+    def get_relative_path(self, package_path: str, debug: bool = False) -> Path:
         relative_path = Path(package_path.replace(".", "/"))
+        if debug:
+            self.logging.log(f"Relative path: {str(relative_path)}", "debug")
         return relative_path
 
     def construct_file_path(
-        self, base_path: Path, relative_path: Path, file_name: str
+        self, base_path: Path, relative_path: Path, file_name: str, debug: bool = False
     ) -> Path:
         try:
             index_to_replace = base_path.parts.index("main")
@@ -86,6 +90,8 @@ class EntityCreationUtils:
             / relative_path
             / f"{file_name}.java"
         )
+        if debug:
+            self.logging.log(f"File path: {str(file_path)}", "debug")
         return file_path
 
     def generate_new_entity_template(
@@ -124,10 +130,7 @@ class EntityCreationUtils:
         if debug:
             self.logging.log(
                 [
-                    f"Entity name: {entity_name}",
-                    f"Entity type: {entity_type}",
-                    f"Parent entity type: {parent_entity_type}",
-                    f"Parent entity package path: {parent_entity_package_path}",
+                    f"Snaked entity name: {snaked_entity_name}",
                     f"Template:\n{template}",
                 ],
                 "debug",
@@ -169,6 +172,7 @@ class EntityCreationUtils:
         buffer_bytes = self.common_utils.add_imports_to_buffer(
             self.importings, buffer_bytes, debug
         )
+        self.logging.log(f"Final buffer:\n{buffer_bytes.decode('utf-8')}", "debug")
         self.treesitter_utils.update_buffer(
             buffer_bytes=buffer_bytes,
             buffer_path=final_path,

@@ -14,9 +14,7 @@ class PathUtils:
         "settings.gradle",
     ]
 
-    def __init__(
-        self, cwd: Path, treesitter_utils: TreesitterUtils, logging: Logging
-    ):
+    def __init__(self, cwd: Path, treesitter_utils: TreesitterUtils, logging: Logging):
         self.cwd: Path = cwd
         self.logging: Logging = logging
         self.treesitter_utils: TreesitterUtils = treesitter_utils
@@ -39,7 +37,9 @@ class PathUtils:
                     entities_found[entity_name] = (entity_package_path, entity_path)
         if debug:
             self.logging.log(
-                [f"{e[0]} - {str(e[1])}" for e in entities_found.items()], "debug"
+                ["Entities found:\n"]
+                + [f"{e[0]} - {str(e[1])}" for e in entities_found.items()],
+                "debug",
             )
         return entities_found
 
@@ -103,7 +103,7 @@ class PathUtils:
                     if "public " + declaration_type in node_text:
                         get_next = True
         if debug:
-            self.logging.log([x[0] for x in found_files], "debug")
+            self.logging.log(["Files found:\n"] + [x[0] for x in found_files], "debug")
         return found_files
 
     def get_buffer_package_path(
@@ -125,7 +125,6 @@ class PathUtils:
         if debug:
             self.logging.log(
                 [
-                    f"Buffer path: {str(buffer_path)}",
                     f"Index to replace: {index_to_replace}",
                     f"Parent path: {str(parent_path)}",
                     f"Package path: {package_path}",

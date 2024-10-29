@@ -42,7 +42,7 @@ class EntityRelationshipUtils:
         debug: bool = False,
     ) -> Optional[str]:
         cascades: List[str] = []
-        cascade_param: Optional[str]
+        merged_params: Optional[str]
         if cascade_persist:
             cascades.append("PERSIST")
         if cascade_merge:
@@ -54,13 +54,13 @@ class EntityRelationshipUtils:
         if cascade_detach:
             cascades.append("DETACH")
         if len(cascades) == 5:
-            cascade_param = "cascade = CascadeType.ALL"
+            merged_params = "cascade = CascadeType.ALL"
         elif len(cascades) == 1:
-            cascade_param = f"cascade = CascadeType.{cascades[0]}"
+            merged_params = f"cascade = CascadeType.{cascades[0]}"
         elif len(cascades) == 0:
-            cascade_param = None
+            merged_params = None
         else:
-            cascade_param = (
+            merged_params = (
                 f"cascade = {{{', '.join([f'CascadeType.{c}' for c in cascades])}}}"
             )
         if "jakarta.persistence.CascadeType" not in self.importings:
@@ -68,17 +68,12 @@ class EntityRelationshipUtils:
         if debug:
             self.logging.log(
                 [
-                    f"Persist: {cascade_persist}",
-                    f"Merge: {cascade_merge}",
-                    f"Remove: {cascade_remove}",
-                    f"Refresh: {cascade_refresh}",
-                    f"Detach: {cascade_detach}",
                     f"Cascades: {', '.join(cascades)}",
-                    f"Cascade param: {cascade_param}",
+                    f"Merged cascade params: {merged_params}",
                 ],
                 "debug",
             )
-        return cascade_param
+        return merged_params
 
     def process_extra_params(
         self,
@@ -112,12 +107,7 @@ class EntityRelationshipUtils:
         if debug:
             self.logging.log(
                 [
-                    f"Nullable: {nullable}",
-                    f"Optional: {optional}",
-                    f"Orphan removal: {orphan_removal}",
-                    f"Fetch: {fetch}",
-                    f"Name: {name}",
-                    f"MappedBy: {mapped_by}",
+                    f"Joined params: {joined_params}",
                     f"Params body: {joined_params}",
                 ],
                 "debug",
@@ -136,7 +126,6 @@ class EntityRelationshipUtils:
         if debug:
             self.logging.log(
                 [
-                    f"Collection type: {collection_type}",
                     f"Collection name: {collection_name}",
                     f"Collection initialization: {collection_initialization}",
                 ],
@@ -184,10 +173,7 @@ class EntityRelationshipUtils:
         snaked_field_name = sub(r"(?<!^)(?=[A-Z])", "_", field_type).lower()
         if debug:
             self.logging.log(
-                [
-                    f"Field type: {field_type}",
-                    f"Snaked field name: {snaked_field_name}",
-                ],
+                f"Snaked field name: {snaked_field_name}",
                 "debug",
             )
         return snaked_field_name
@@ -283,8 +269,6 @@ class EntityRelationshipUtils:
         if debug:
             self.logging.log(
                 [
-                    f"Field type: {one_field_type}",
-                    f"Field name: {params[0]}",
                     f"Params: {', '.join(params)}",
                     f"Orphan removal: {orphan_removal}",
                     f"Body: {body}",
@@ -330,7 +314,6 @@ class EntityRelationshipUtils:
             self.logging.log(
                 [
                     f"Params: {', '.join(params)}",
-                    f"Optional: {optional}",
                     f"Body: {body}",
                 ],
                 "debug",
@@ -422,7 +405,6 @@ class EntityRelationshipUtils:
             self.logging.log(
                 [
                     f"Params: {', '.join(params)}",
-                    f"Optional: {optional}",
                     f"Body: {body}",
                 ],
                 "debug",
@@ -484,8 +466,6 @@ class EntityRelationshipUtils:
             self.logging.log(
                 [
                     f"Snaked field name: {inverse_side_field_type}",
-                    f"Nullable: {nullable}",
-                    f"Unique: {unique}",
                     f"Body: {body}",
                 ],
                 "debug",
@@ -528,10 +508,7 @@ class EntityRelationshipUtils:
         if debug:
             self.logging.log(
                 [
-                    f"Field type: {field_type}",
                     f"Field name: {field_name}",
-                    f"Is collection: {is_collection}",
-                    f"Collection type: {collection_type}",
                     f"Field body: {body}",
                 ],
                 "debug",
@@ -568,7 +545,7 @@ class EntityRelationshipUtils:
         )
         body = "\n" + "\n" + one_to_many_body + "\n" + field_body + "\n"
         if debug:
-            self.logging.log(body, "debug")
+            self.logging.log(f"Body:\n{body}", "debug")
         return body
 
     def generate_many_to_one_template(
@@ -611,7 +588,7 @@ class EntityRelationshipUtils:
             + "\n"
         )
         if debug:
-            self.logging.log(complete_field_body, "debug")
+            self.logging.log(f"Complete field body: {complete_field_body}", "debug")
         return complete_field_body
 
     def generate_one_to_one_field_template(
@@ -660,7 +637,7 @@ class EntityRelationshipUtils:
             complete_field_body += "\n" + join_column_body
         complete_field_body += "\n" + field_body + "\n"
         if debug:
-            self.logging.log(complete_field_body, "debug")
+            self.logging.log(f"Complete field body: {complete_field_body}", "debug")
         return complete_field_body
 
     def generate_many_to_many_field_template(
@@ -710,7 +687,7 @@ class EntityRelationshipUtils:
             if equals_and_hashcode is not None:
                 complete_field_body += equals_and_hashcode
         if debug:
-            self.logging.log(complete_field_body, "debug")
+            self.logging.log(f"Complete field body: {complete_field_body}", "debug")
         return complete_field_body
 
     def create_many_to_one_relationship_field(
@@ -788,6 +765,11 @@ class EntityRelationshipUtils:
             self.treesitter_utils.update_buffer(
                 buffer_bytes, inverse_side_field_data[2], False, True, True, debug
             )
+            if debug:
+                self.logging.log(
+                    f"Buffer after:\n{buffer_bytes.decode('utf-8')}\n",
+                    "debug",
+                )
 
     def create_one_to_one_relationship_field(
         self,
@@ -876,6 +858,11 @@ class EntityRelationshipUtils:
                 True,
                 True,
                 debug,
+            )
+        if debug:
+            self.logging.log(
+                f"Buffer after:\n{buffer_bytes.decode('utf-8')}\n",
+                "debug",
             )
 
     def create_many_to_many_relationship_field(
@@ -969,4 +956,9 @@ class EntityRelationshipUtils:
                 True,
                 True,
                 debug,
+            )
+        if debug:
+            self.logging.log(
+                f"Buffer after:\n{buffer_bytes.decode('utf-8')}\n",
+                "debug",
             )
