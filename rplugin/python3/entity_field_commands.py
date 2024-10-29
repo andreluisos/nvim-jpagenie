@@ -14,6 +14,7 @@ class EntityFieldCommands(Base):
 
     @command("CreateBasicEntityField")
     def create_basic_entity_field(self) -> None:
+        self.logging.reset_log_file()
         data = [
             {"name": f"{v[0]} ({v[1]})", "id": f"{v[1]}.{v[0]}", "type": f"{v[0]}"}
             for v in self.java_basic_types
@@ -54,6 +55,7 @@ class EntityFieldCommands(Base):
 
     @command("CreateEnumEntityField")
     def create_enum_entity_field(self) -> None:
+        self.logging.reset_log_file()
         data = [
             {
                 "name": f"{v[0]} ({v[1]})",
@@ -89,6 +91,7 @@ class EntityFieldCommands(Base):
 
     @command("CreateIdEntityField")
     def create_id_entity_field(self) -> None:
+        self.logging.reset_log_file()
         data = [
             {"name": f"{v[0]} ({v[1]})", "id": f"{v[1]}.{v[0]}", "type": f"{v[0]}"}
             for v in self.java_basic_types

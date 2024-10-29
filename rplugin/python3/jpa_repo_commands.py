@@ -13,7 +13,7 @@ class JpaRepoCommands(Base):
 
     @command("CreateJPARepository")
     def create_jpa_repo_repository(self) -> None:
-        # Optional arg: debug
+        self.logging.reset_log_file()
         root_path = self.path_utils.spring_project_root_path
         self.jpa_repo_utils.create_jpa_entity_for_current_buffer(
             Path(root_path), debug=True

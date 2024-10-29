@@ -11,6 +11,7 @@ class EntityCreationCommands(Base):
 
     @command("CreateNewJpaEntity")
     def create_new_jpa_entity(self) -> None:
+        self.logging.reset_log_file()
         found_entities = self.entity_creation_utils.fetch_entity_data(debug=True)
         parent_entities = [
             {

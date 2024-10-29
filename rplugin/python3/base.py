@@ -23,7 +23,7 @@ class Base(object):
         self.ui_path = str(Path(__file__).parent.resolve().joinpath("ui"))
         self.file_utils = FileUtils()
         self.java_basic_types = JAVA_BASIC_TYPES
-        self.logging = Logging()
+        self.logging = Logging(self.nvim)
         self.treesitter_utils = TreesitterUtils(
             self.nvim, self.java_basic_types, self.cwd, self.logging
         )
