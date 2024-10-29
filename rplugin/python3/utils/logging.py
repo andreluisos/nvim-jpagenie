@@ -46,6 +46,7 @@ class Logging:
     def reset_log_file(self) -> None:
         if self.log_file_path.exists() and self.log_file_path.is_file():
             self.log_file_path.write_text("")
+        self.last_call_stack = None
 
     def log(
         self,
