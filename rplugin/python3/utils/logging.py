@@ -1,16 +1,34 @@
 from logging import log as _log, basicConfig, DEBUG
-from typing import List, Literal
+from pathlib import Path
+from typing import List, Literal, Optional
 from inspect import stack
+
+from pynvim.api import Nvim
 
 
 class Logging:
-    def __init__(self):
+    def __init__(self, nvim: Nvim):
+        self.nvim = nvim
+        self.file_path = Path(__file__).resolve()
+        self.plugin_path = Path(
+            *self.file_path.parts[: self.file_path.parts.index("nvim-jpagenie") + 1]
+        )
+        self.log_file_path = self.plugin_path.joinpath("logging.log")
+        if not self.plugin_path.exists():
+            raise FileNotFoundError
         basicConfig(
-            filename="logging.log",
+            filename=self.plugin_path.joinpath("logging.log"),
             level=DEBUG,
             format="[%(asctime)s - %(name)s - %(levelname)s] - %(message)s",
             datefmt="%Y-%m-%d %H:%M:%S",
         )
+        self.last_call_stack: Optional[str] = None
+
+    @staticmethod
+    def get_caller_params():
+        call_stack = stack()
+        caller_frame = call_stack[2].frame
+        return caller_frame.f_locals
 
     def build_call_stack(self) -> str:
         call_stack: list[str] = []
@@ -25,12 +43,16 @@ class Logging:
             call_stack.append(class_name)
         return ":".join(reversed(call_stack))
 
+    def reset_log_file(self) -> None:
+        if self.log_file_path.exists() and self.log_file_path.is_file():
+            self.log_file_path.write_text("")
+        self.last_call_stack = None
+
     def log(
         self,
         msg: str | List[str],
         level: Literal["debug", "info", "critical", "error", "warn"],
     ) -> None:
-        call_stack = self.build_call_stack()
         level_int: int
         match level:
             case "info":
@@ -45,4 +67,15 @@ class Logging:
                 level_int = 10
         if isinstance(msg, list):
             msg = "\n".join(msg)
-        _log(level_int, f"[{call_stack}]:\n{msg}")
+        log_msg = ""
+        call_stack = self.build_call_stack()
+        if call_stack != self.last_call_stack:
+            log_msg += f"[{call_stack}]:\nParams:\n"
+            params = self.get_caller_params()
+            if params is not None:
+                for k, v in params.items():
+                    log_msg += f"{k}: {v}\n"
+                log_msg += "\n"
+        log_msg += msg
+        _log(level_int, log_msg)
+        self.last_call_stack = call_stack

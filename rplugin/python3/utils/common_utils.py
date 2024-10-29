@@ -30,6 +30,10 @@ class CommonUtils:
             buffer_bytes, import_list, debug
         )
         import_list = []
+        if debug:
+            self.logging.log(
+                f"Updated buffer: {updated_buffer_bytes.decode('utf-8')}", "debug"
+            )
         return updated_buffer_bytes
 
     def pluralize(self, word: str, debug: bool = False) -> str:
@@ -45,9 +49,7 @@ class CommonUtils:
         else:
             pluralized_word = word + "s"
         if debug:
-            self.logging.log(
-                [f"Word: {word}", f"Pluralized word: {pluralized_word}"], "debug"
-            )
+            self.logging.log(f"Pluralized word: {pluralized_word}", "debug")
         return pluralized_word
 
     def generate_field_name(
@@ -58,19 +60,14 @@ class CommonUtils:
             field_name = self.pluralize(field_name)
         field_name = field_name[0].lower() + field_name[1:]
         if debug:
-            self.logging.log(
-                [f"Field type: {field_type}", f"Field name: {field_name}"], "debug"
-            )
+            self.logging.log(f"Field name: {field_name}", "debug")
         return field_name
 
     def generate_snaked_field_name(self, field_name: str, debug: bool = False) -> str:
         snaked_field_name = sub(r"(?<!^)(?=[A-Z])", "_", field_name).lower()
         if debug:
             self.logging.log(
-                [
-                    f"Field name: {field_name}",
-                    f"Snaked field name: {snaked_field_name}",
-                ],
+                f"Snaked field name: {snaked_field_name}",
                 "debug",
             )
         return snaked_field_name
@@ -78,7 +75,7 @@ class CommonUtils:
     def merge_field_params(self, params: List[str], debug: bool = False) -> str:
         merged_params = ", ".join(params)
         if debug:
-            self.logging.log([str(params), merged_params], "debug")
+            self.logging.log(f"Merged params: {merged_params}", "debug")
         return ", ".join(params)
 
     def generate_field_column_line(self, params: List[str], debug: bool = False) -> str:
@@ -87,7 +84,6 @@ class CommonUtils:
         if debug:
             self.logging.log(
                 [
-                    f"Params: {str(params)}",
                     f"Merged params: {merged_params}",
                     f"Column line: {column_line}",
                 ],
@@ -101,11 +97,7 @@ class CommonUtils:
         field_body_line = f"private {field_type} {field_name};"
         if debug:
             self.logging.log(
-                [
-                    f"Field type: {field_type}",
-                    f"Field name: {field_name}",
-                    f"Field body line: {field_body_line }",
-                ],
+                f"Field body line: {field_body_line }",
                 "debug",
             )
         return field_body_line

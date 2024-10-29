@@ -13,6 +13,7 @@ class EntityRelationshipCommands(Base):
 
     @command("CreateManyToOneRelationship")
     def create_many_to_one_relationship(self) -> None:
+        self.logging.reset_log_file()
         buffer_path = Path(self.nvim.current.buffer.name)
         data = [
             {"name": f"{k} ({v[0]})", "id": k}
@@ -45,6 +46,7 @@ class EntityRelationshipCommands(Base):
 
     @command("CreateOneToOneRelationship")
     def create_one_to_one_relationship(self) -> None:
+        self.logging.reset_log_file()
         buffer_path = Path(self.nvim.current.buffer.name)
         data = [
             {"name": f"{k} ({v[0]})", "id": k}
@@ -72,6 +74,7 @@ class EntityRelationshipCommands(Base):
 
     @command("CreateManyToManyRelationship")
     def create_many_to_many_relationship(self) -> None:
+        self.logging.reset_log_file()
         buffer_path = Path(self.nvim.current.buffer.name)
         data = [
             {"name": f"{k} ({v[0]})", "id": k}
