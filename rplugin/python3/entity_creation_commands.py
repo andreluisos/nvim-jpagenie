@@ -31,7 +31,6 @@ class EntityCreationCommands(Base):
                 root_package_path,
             ),
         )
-        pass
 
     @function("CreateNewJpaEntityCallback")
     def many_to_one_callback(self, args):
