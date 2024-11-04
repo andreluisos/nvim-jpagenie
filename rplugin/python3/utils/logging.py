@@ -39,8 +39,9 @@ class Logging:
                 break
             if i == 0:
                 continue
-            call_stack.append(method_name)
-            call_stack.append(class_name)
+            if class_name != "Logging" and method_name != "log":
+                call_stack.append(method_name)
+                call_stack.append(class_name)
         return ":".join(reversed(call_stack))
 
     def reset_log_file(self) -> None:
