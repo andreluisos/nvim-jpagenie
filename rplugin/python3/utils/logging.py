@@ -80,3 +80,6 @@ class Logging:
         log_msg += msg
         _log(level_int, log_msg)
         self.last_call_stack = call_stack
+
+    def echomsg(self, msg: str) -> None:
+        self.nvim.command(f"echomsg '{msg}'")
