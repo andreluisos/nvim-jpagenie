@@ -1,9 +1,11 @@
 from logging import log as _log, basicConfig, DEBUG
 from pathlib import Path
-from typing import List, Literal, Optional
+from typing import List, Optional
 from inspect import stack
 
 from pynvim.api import Nvim
+
+from custom_types.log_level import LogLevel
 
 
 class Logging:
@@ -52,17 +54,17 @@ class Logging:
     def log(
         self,
         msg: str | List[str],
-        level: Literal["debug", "info", "critical", "error", "warn"],
+        level: LogLevel,
     ) -> None:
         level_int: int
         match level:
-            case "info":
+            case LogLevel.INFO:
                 level_int = 20
-            case "critical":
+            case LogLevel.CRITICAL:
                 level_int = 50
-            case "error":
+            case LogLevel.ERROR:
                 level_int = 40
-            case "warn":
+            case LogLevel.WARN:
                 level_int = 30
             case _:
                 level_int = 10

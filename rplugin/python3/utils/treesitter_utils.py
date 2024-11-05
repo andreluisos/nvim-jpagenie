@@ -4,6 +4,7 @@ from typing import Dict, List, Optional, Tuple
 import tree_sitter_java as tsjava
 from tree_sitter import Language, Node, Parser, Query, Tree
 from pynvim.api.nvim import Nvim
+from rplugin.python3.custom_types.log_level import LogLevel
 from utils.logging import Logging
 
 
@@ -27,7 +28,7 @@ class TreesitterUtils:
             return bytes_value.decode()
         except (UnicodeDecodeError, AttributeError) as e:
             error_msg = f"Error decoding bytes: {e}"
-            self.logging.log(error_msg, "error")
+            self.logging.log(error_msg, LogLevel.ERROR)
             raise RuntimeError(error_msg)
 
     def convert_string_to_bytes(self, string_value: str) -> bytes:
@@ -35,7 +36,7 @@ class TreesitterUtils:
             return string_value.encode()
         except (UnicodeEncodeError, AttributeError) as e:
             error_msg = f"Error enconding string: {e}"
-            self.logging.log(error_msg, "error")
+            self.logging.log(error_msg, LogLevel.ERROR)
             raise RuntimeError(error_msg)
 
     def convert_buffer_to_tree(self, buffer: Path | bytes) -> Tree:
@@ -46,7 +47,7 @@ class TreesitterUtils:
                     buffer_bytes = buffer.read_bytes()
                 except (OSError, FileNotFoundError) as e:
                     error_msg = f"Error reading from file path {buffer}: {e}"
-                    self.logging.log(error_msg, "error")
+                    self.logging.log(error_msg, LogLevel.ERROR)
                     raise RuntimeError(error_msg)
             else:
                 buffer_bytes = buffer
@@ -54,7 +55,7 @@ class TreesitterUtils:
             return buffer_tree
         except Exception as e:
             error_msg = f"Error parsing buffer to tree: {e}"
-            self.logging.log(error_msg, "error")
+            self.logging.log(error_msg, LogLevel.ERROR)
             raise RuntimeError(error_msg)
 
     def query_match(self, tree: Tree, query_param: str) -> List[Node]:
@@ -62,7 +63,7 @@ class TreesitterUtils:
             query: Query = self.ts_java.query(query_param)
         except Exception as e:
             error_msg = f"Error creating query from query_param '{query_param}': {e}"
-            self.logging.log(error_msg, "error")
+            self.logging.log(error_msg, LogLevel.ERROR)
             raise RuntimeError(error_msg)
         try:
             query_results: List[Tuple[int, Dict[str, List[Node]]]] = query.matches(
@@ -76,7 +77,7 @@ class TreesitterUtils:
             return nodes
         except Exception as e:
             error_msg = f"Error matching query in tree: {e}"
-            self.logging.log(error_msg, "error")
+            self.logging.log(error_msg, LogLevel.ERROR)
             raise RuntimeError(error_msg)
 
     def get_node_by_type(self, node: Node, type_name: str) -> Optional[Node]:
@@ -95,7 +96,7 @@ class TreesitterUtils:
         buffer_string: Optional[str] = None
         if not buffer_bytes:
             error_msg = "Unable to convert root node's text to bytes"
-            self.logging.log(error_msg, "critical")
+            self.logging.log(error_msg, LogLevel.CRITICAL)
             raise ValueError(error_msg)
         buffer_string = buffer_bytes.decode()
         modified_buffer_string = (
@@ -109,7 +110,7 @@ class TreesitterUtils:
                     f"Current buffer:\n{buffer_string}",
                     f"Modified buffer:\n{modified_buffer_string}",
                 ],
-                "debug",
+                LogLevel.DEBUG,
             )
         return self.convert_buffer_to_tree(modified_buffer_string.encode())
 
@@ -125,7 +126,7 @@ class TreesitterUtils:
         node_text = tree.root_node.text
         if not node_text:
             error_msg = "Root node doesn't have text"
-            self.logging.log(error_msg, "error")
+            self.logging.log(error_msg, LogLevel.ERROR)
             raise ValueError(error_msg)
         buffer_path.write_bytes(node_text)
         self.nvim.command(f"e {str(buffer_path)}")
@@ -141,7 +142,7 @@ class TreesitterUtils:
                     f"Updated buffer: {node_text.decode()}",
                     f"Original buffer: {buffer_path.read_text('utf-8')}",
                 ],
-                "debug",
+                LogLevel.DEBUG,
             )
 
     def get_buffer_public_class_node_from_query_results(
@@ -161,7 +162,7 @@ class TreesitterUtils:
             if public_class_node and public_class_node.text:
                 self.convert_bytes_to_string(public_class_node.text)
             self.logging.log(
-                f"Found public class node: {public_class_node_str}", "debug"
+                f"Found public class node: {public_class_node_str}", LogLevel.DEBUG
             )
         return public_class_node
 
@@ -185,7 +186,7 @@ class TreesitterUtils:
                     f"Total query results: {len(query_results)}",
                     f"Public class name: {public_class_name}",
                 ],
-                "debug",
+                LogLevel.DEBUG,
             )
         return public_class_name
 
@@ -212,7 +213,7 @@ class TreesitterUtils:
                                 public_class_has_annotation = True
         if debug:
             self.logging.log(
-                f"Annotation found: {public_class_has_annotation}", "debug"
+                f"Annotation found: {public_class_has_annotation}", LogLevel.DEBUG
             )
         return public_class_has_annotation
 
@@ -238,6 +239,6 @@ class TreesitterUtils:
         if debug:
             self.logging.log(
                 f"Public class has method '{method_name}': {public_class_has_method}",
-                "debug",
+                LogLevel.DEBUG,
             )
         return public_class_has_method
