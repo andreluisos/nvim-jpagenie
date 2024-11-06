@@ -89,31 +89,6 @@ class TreesitterUtils:
                 return result
         return None
 
-    def insert_code_into_position(
-        self, tree: Tree, code: str, insert_position: int, debug: bool = False
-    ) -> Tree:
-        buffer_bytes = tree.root_node.text
-        buffer_string: Optional[str] = None
-        if not buffer_bytes:
-            error_msg = "Unable to convert root node's text to bytes"
-            self.logging.log(error_msg, LogLevel.CRITICAL)
-            raise ValueError(error_msg)
-        buffer_string = buffer_bytes.decode()
-        modified_buffer_string = (
-            buffer_string[:insert_position] + code + buffer_string[insert_position:]
-        )
-        if debug:
-            self.logging.log(
-                [
-                    f"Code:\n{code}",
-                    f"Insert position: {insert_position}",
-                    f"Current buffer:\n{buffer_string}",
-                    f"Modified buffer:\n{modified_buffer_string}",
-                ],
-                LogLevel.DEBUG,
-            )
-        return self.convert_buffer_to_tree(modified_buffer_string.encode())
-
     def update_buffer(
         self,
         tree: Tree,
@@ -242,3 +217,22 @@ class TreesitterUtils:
                 LogLevel.DEBUG,
             )
         return public_class_has_method
+
+    def insert_code_at_position(
+        self, code: str, insert_position, file_tree: Tree
+    ) -> Tree:
+        updated_tree: Optional[Tree] = None
+        code_bytes = code.encode("utf-8")
+        node_text_bytes = file_tree.root_node.text
+        if node_text_bytes:
+            node_text_bytes = (
+                node_text_bytes[:insert_position]
+                + code_bytes
+                + node_text_bytes[insert_position:]
+            )
+            updated_tree = self.convert_buffer_to_tree(node_text_bytes)
+        if not updated_tree:
+            error_msg = "Unable to update tree"
+            self.logging.log(error_msg, LogLevel.ERROR)
+            raise ValueError(error_msg)
+        return updated_tree
