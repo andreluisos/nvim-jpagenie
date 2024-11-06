@@ -1,3 +1,4 @@
+from re import sub
 from typing import List
 
 from tree_sitter import Tree
@@ -39,6 +40,15 @@ class CommonUtils:
         if debug:
             self.logging.log(f"Pluralized word: {pluralized_word}", LogLevel.DEBUG)
         return pluralized_word
+
+    def convert_to_snake_case(self, text: str, debug: bool = False) -> str:
+        snaked_field_name = sub(r"(?<!^)(?=[A-Z])", "_", text).lower()
+        if debug:
+            self.logging.log(
+                f"Snaked field name: {snaked_field_name}",
+                LogLevel.DEBUG,
+            )
+        return snaked_field_name
 
     def get_buffer_package_path(
         self,
