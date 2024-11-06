@@ -157,7 +157,8 @@ class CommonUtils:
             self.logging.log(error_msg, LogLevel.ERROR)
             raise ValueError(error_msg)
         insert_byte: int = query_results[0].end_byte + 1
-        merged_import_list = ";\n".join(import_list) + ";"
+        import_list = [f"import {e};" for e in import_list]
+        merged_import_list = "\n".join(import_list)
         updated_tree = self.treesitter_utils.insert_code_at_position(
             merged_import_list, insert_byte, file_tree
         )
