@@ -4,7 +4,7 @@ from typing import Dict, List, Optional, Tuple
 import tree_sitter_java as tsjava
 from tree_sitter import Language, Node, Parser, Query, Tree
 from pynvim.api.nvim import Nvim
-from rplugin.python3.custom_types.log_level import LogLevel
+from custom_types.log_level import LogLevel
 from utils.logging import Logging
 
 
@@ -155,7 +155,7 @@ class TreesitterUtils:
                     modifiers_text_str = self.convert_bytes_to_string(
                         child_node.text
                     ).split("\n")
-                    if modifiers_text_str[-1] == "public":
+                    if "public" in modifiers_text_str:
                         public_class_node = node
         if debug:
             public_class_node_str: Optional[str] = None
