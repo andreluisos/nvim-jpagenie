@@ -103,14 +103,15 @@ class TreesitterUtils:
             error_msg = "Root node doesn't have text"
             self.logging.log(error_msg, LogLevel.ERROR)
             raise ValueError(error_msg)
-        buffer_path.write_bytes(node_text)
         self.nvim.command(f"e {str(buffer_path)}")
+        if tree.root_node.text:
+            self.nvim.current.buffer[:] = tree.root_node.text.decode().split("\n")
         if save:
             self.nvim.command(f"w {str(buffer_path)}")
-        if organize_imports:
-            self.nvim.command("lua require('jdtls').organize_imports()")
         if format and not save:
             self.nvim.command("lua vim.lsp.buf.format({ async = true })")
+        if organize_imports:
+            self.nvim.command("lua require('jdtls').organize_imports()")
         if debug:
             self.logging.log(
                 [
