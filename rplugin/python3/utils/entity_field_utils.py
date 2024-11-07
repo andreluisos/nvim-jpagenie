@@ -30,30 +30,6 @@ class EntityFieldUtils:
         self.java_basic_types = java_basic_types
         self.common_utils = common_utils
 
-    def get_entity_field_insert_byte(
-        self, file_tree: Tree, debug: bool = False
-    ) -> Optional[int]:
-        insert_byte: Optional[int] = None
-        query_results = self.treesitter_utils.query_match(
-            file_tree, "(class_declaration) @class_decl"
-        )
-        main_class_node = (
-            self.treesitter_utils.get_buffer_public_class_node_from_query_results(
-                query_results, debug
-            )
-        )
-        if main_class_node:
-            class_body = main_class_node.child_by_field_name("body")
-            if class_body:
-                field_declarations = class_body.children
-                if len(field_declarations) != 0:
-                    insert_byte = field_declarations[-1].end_byte - 1
-                else:
-                    insert_byte = class_body.start_byte
-        if debug:
-            self.logging.log(f"Insert byte: {insert_byte}", LogLevel.DEBUG)
-        return insert_byte
-
     def merge_field_params(self, params: List[str], debug: bool = False) -> str:
         merged_params = ", ".join(params)
         if debug:
@@ -306,7 +282,9 @@ class EntityFieldUtils:
         updated_buffer_tree = self.treesitter_utils.add_imports_to_file_tree(
             buffer_tree, debug
         )
-        insert_byte = self.get_entity_field_insert_byte(updated_buffer_tree, debug)
+        insert_byte = self.common_utils.get_entity_field_insert_byte(
+            updated_buffer_tree, debug
+        )
         if not insert_byte:
             error_msg = "Unable to get field insert position"
             self.logging.log(error_msg, LogLevel.ERROR)

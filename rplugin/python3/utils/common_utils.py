@@ -1,6 +1,8 @@
 from re import sub
 from typing import List, Optional
 
+from tree_sitter import Tree
+
 from custom_types.java_file_data import JavaFileData
 from custom_types.declaration_type import DeclarationType
 from custom_types.log_level import LogLevel
@@ -158,3 +160,27 @@ class CommonUtils:
         if debug:
             self.logging.log(f"Field name: {field_name}", LogLevel.DEBUG)
         return field_name
+
+    def get_entity_field_insert_byte(
+        self, file_tree: Tree, debug: bool = False
+    ) -> Optional[int]:
+        insert_byte: Optional[int] = None
+        query_results = self.treesitter_utils.query_match(
+            file_tree, "(class_declaration) @class_decl"
+        )
+        main_class_node = (
+            self.treesitter_utils.get_buffer_public_class_node_from_query_results(
+                query_results, debug
+            )
+        )
+        if main_class_node:
+            class_body = main_class_node.child_by_field_name("body")
+            if class_body:
+                field_declarations = class_body.children
+                if len(field_declarations) != 0:
+                    insert_byte = field_declarations[-1].end_byte - 1
+                else:
+                    insert_byte = class_body.start_byte
+        if debug:
+            self.logging.log(f"Insert byte: {insert_byte}", LogLevel.DEBUG)
+        return insert_byte
