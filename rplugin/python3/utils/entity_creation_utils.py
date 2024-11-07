@@ -24,7 +24,6 @@ class EntityCreationUtils:
         self.path_utils = path_utils
         self.logging = logging
         self.common_utils = common_utils
-        self.importings: List[str] = []
 
     def get_base_path(self, main_class_path: Path, debug: bool = False) -> Path:
         base_path = main_class_path.parent
@@ -65,25 +64,23 @@ class EntityCreationUtils:
         parent_entity_package_path: Optional[str],
         debug: bool = False,
     ) -> str:
-        self.importings.append("jakarta.persistence.Table")
+        imports_to_add: List[str] = ["jakarta.persistence.Table"]
         snaked_entity_name = self.common_utils.convert_to_snake_case(entity_name, debug)
         if entity_name == "User":
             snaked_entity_name += "_"
         template = f"package {package_path};\n\n"
         if entity_type == "entity":
-            self.importings.append("jakarta.persistence.Entity")
+            imports_to_add.append("jakarta.persistence.Entity")
             template += "@Entity\n"
         elif entity_type == "embeddable":
-            self.importings.append("jakarta.persistence.Embeddable")
+            imports_to_add.append("jakarta.persistence.Embeddable")
             template += "@Embeddable\n"
         else:
-            self.importings.append("jakarta.persistence.MappedSuperclass")
+            imports_to_add.append("jakarta.persistence.MappedSuperclass")
             template += "@MappedSuperclass\n"
         template += f'@Table(name = "{snaked_entity_name}")\n'
         if parent_entity_type and parent_entity_package_path:
-            self.importings.append(
-                parent_entity_package_path + "." + parent_entity_type
-            )
+            imports_to_add.append(parent_entity_package_path + "." + parent_entity_type)
             template += f"public class {entity_name} extends {parent_entity_type} {{}}"
         else:
             template += f"public class {entity_name} {{}}"
@@ -95,6 +92,7 @@ class EntityCreationUtils:
                 ],
                 LogLevel.DEBUG,
             )
+        self.common_utils.add_to_importing_list(imports_to_add, debug)
         return template
 
     def create_new_entity(
@@ -115,8 +113,6 @@ class EntityCreationUtils:
         if final_path.exists():
             error_msg = f"File {str(final_path)} already exists"
             self.logging.log(error_msg, LogLevel.ERROR)
-        final_path.parent.mkdir(parents=True, exist_ok=True)
-        final_path.touch(exist_ok=True)
         template = self.generate_new_entity_template(
             package_path=package_path,
             entity_name=entity_name,
@@ -126,9 +122,7 @@ class EntityCreationUtils:
             debug=debug,
         )
         buffer_tree = self.treesitter_utils.convert_buffer_to_tree(template.encode())
-        buffer_tree = self.common_utils.add_imports_to_file_tree(
-            self.importings, buffer_tree, debug
-        )
+        buffer_tree = self.common_utils.add_imports_to_file_tree(buffer_tree, debug)
         self.treesitter_utils.update_buffer(
             tree=buffer_tree,
             buffer_path=final_path,
@@ -148,3 +142,4 @@ class EntityCreationUtils:
                 ],
                 LogLevel.DEBUG,
             )
+        self.importings = []

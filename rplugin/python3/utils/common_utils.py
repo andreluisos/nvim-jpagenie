@@ -24,6 +24,7 @@ class CommonUtils:
         self.logging = logging
         self.treesitter_utils = treesitter_utils
         self.path_utils = path_utils
+        self.importings: List[str] = []
 
     def pluralize_word(self, word: str, debug: bool = False) -> str:
         pluralized_word: str
@@ -145,9 +146,25 @@ class CommonUtils:
             )
         return files_found
 
-    def add_imports_to_file_tree(
-        self, import_list: List[str], file_tree: Tree, debug: bool = False
-    ) -> Tree:
+    def add_to_importing_list(
+        self, import_list: List[str], debug: bool = False
+    ) -> None:
+        imports_to_extend = []
+        for i in import_list:
+            if i not in self.importings:
+                imports_to_extend.append(i)
+        if debug:
+            self.logging.log(
+                [
+                    f"Previous import list: {str(self.importings)}",
+                    f"New imports: {str(imports_to_extend)}",
+                    f"New import list: {str(self.importings + imports_to_extend)}",
+                ],
+                LogLevel.DEBUG,
+            )
+        self.importings.extend(imports_to_extend)
+
+    def add_imports_to_file_tree(self, file_tree: Tree, debug: bool = False) -> Tree:
         package_query_param = "(package_declaration) @package_decl"
         query_results = self.treesitter_utils.query_match(
             tree=file_tree, query_param=package_query_param
@@ -157,7 +174,7 @@ class CommonUtils:
             self.logging.log(error_msg, LogLevel.ERROR)
             raise ValueError(error_msg)
         insert_byte: int = query_results[0].end_byte + 1
-        import_list = [f"import {e};" for e in import_list]
+        import_list = [f"import {e};" for e in self.importings]
         merged_import_list = "\n".join(import_list)
         updated_tree = self.treesitter_utils.insert_code_at_position(
             merged_import_list, insert_byte, file_tree
@@ -173,4 +190,5 @@ class CommonUtils:
                 ],
                 LogLevel.DEBUG,
             )
+        self.importings = []
         return updated_tree
