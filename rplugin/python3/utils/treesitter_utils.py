@@ -112,6 +112,14 @@ class TreesitterUtils:
             self.logging.log(error_msg, LogLevel.ERROR)
             raise RuntimeError(error_msg)
 
+    def get_node_text_as_string(self, node: Node, debug: bool = False) -> Optional[str]:
+        node_text_str: Optional[str] = None
+        if node.text:
+            node_text_str = self.convert_bytes_to_string(node.text)
+        if debug:
+            self.logging.log(f"Node text: {node_text_str}", LogLevel.DEBUG)
+        return node_text_str
+
     def get_node_by_type(self, node: Node, type_name: str) -> Optional[Node]:
         if node.type == type_name:
             return node
@@ -310,7 +318,8 @@ class TreesitterUtils:
                     f"Query results len: {len(query_results)}",
                     f"Insert byte: {insert_byte}",
                     f"Merged import list: {merged_import_list}",
-                    f"Updated tree: {updated_tree}",
+                    f"Node before: {self.get_node_text_as_string(file_tree.root_node)}",
+                    f"Node after: {self.get_node_text_as_string(updated_tree.root_node)}",
                 ],
                 LogLevel.DEBUG,
             )
