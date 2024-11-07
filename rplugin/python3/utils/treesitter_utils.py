@@ -1,6 +1,7 @@
 from pathlib import Path
 from typing import Dict, List, Optional, Tuple
 
+from pynvim.api import Buffer
 import tree_sitter_java as tsjava
 from tree_sitter import Language, Node, Parser, Query, Tree
 from pynvim.api.nvim import Nvim
@@ -22,6 +23,7 @@ class TreesitterUtils:
         self.logging = logging
         self.ts_java = Language(tsjava.language())
         self.parser = Parser(self.ts_java)
+        self.importings: List[str] = []
 
     def convert_bytes_to_string(self, bytes_value: bytes) -> str:
         try:
@@ -39,28 +41,50 @@ class TreesitterUtils:
             self.logging.log(error_msg, LogLevel.ERROR)
             raise RuntimeError(error_msg)
 
-    def convert_buffer_to_tree(self, buffer: Path | bytes) -> Tree:
+    def convert_bytes_to_tree(self, file_bytes: bytes) -> Tree:
         try:
-            buffer_bytes: bytes
-            if isinstance(buffer, Path):
-                try:
-                    buffer_bytes = buffer.read_bytes()
-                except (OSError, FileNotFoundError) as e:
-                    error_msg = f"Error reading from file path {buffer}: {e}"
-                    self.logging.log(error_msg, LogLevel.ERROR)
-                    raise RuntimeError(error_msg)
-            else:
-                buffer_bytes = buffer
-            buffer_tree = self.parser.parse(buffer_bytes)
+            if not file_bytes:
+                raise ValueError("Input bytes are empty")
+            buffer_tree = self.parser.parse(file_bytes)
             return buffer_tree
+        except ValueError as e:
+            error_msg = f"Error parsing bytes: {e}"
+            self.logging.log(error_msg, LogLevel.ERROR)
+            raise RuntimeError(error_msg)
         except Exception as e:
-            error_msg = f"Error parsing buffer to tree: {e}"
+            error_msg = f"Unexpected error while parsing bytes: {e}"
+            self.logging.log(error_msg, LogLevel.ERROR)
+            raise RuntimeError(error_msg)
+
+    def convert_path_to_tree(self, file_path: Path) -> Tree:
+        buffer_bytes: bytes
+        try:
+            buffer_bytes = file_path.read_bytes()
+        except (OSError, FileNotFoundError) as e:
+            error_msg = f"Error reading from file path {str(file_path)}: {e}"
+            self.logging.log(error_msg, LogLevel.ERROR)
+            raise RuntimeError(error_msg)
+        buffer_tree = self.parser.parse(buffer_bytes)
+        return buffer_tree
+
+    def convert_buffer_to_tree(self, buffer: Buffer) -> Tree:
+        try:
+            if not buffer:
+                raise ValueError("Input buffer is empty")
+            buffer_bytes = "\n".join(buffer[:]).encode("utf-8")
+            return self.convert_bytes_to_tree(buffer_bytes)
+        except ValueError as e:
+            error_msg = f"Error with buffer: {e}"
+            self.logging.log(error_msg, LogLevel.ERROR)
+            raise RuntimeError(error_msg)
+        except Exception as e:
+            error_msg = f"Unexpected error while converting buffer to tree: {e}"
             self.logging.log(error_msg, LogLevel.ERROR)
             raise RuntimeError(error_msg)
 
     def convert_node_to_tree(self, node: Node) -> Tree:
         if node.text:
-            return self.convert_buffer_to_tree(node.text)
+            return self.convert_bytes_to_tree(node.text)
         else:
             error_msg = "Unable to convert node into tree"
             self.logging.log(error_msg, LogLevel.ERROR)
@@ -239,9 +263,56 @@ class TreesitterUtils:
                 + code_bytes
                 + node_text_bytes[insert_position:]
             )
-            updated_tree = self.convert_buffer_to_tree(node_text_bytes)
+            updated_tree = self.convert_bytes_to_tree(node_text_bytes)
         if not updated_tree:
             error_msg = "Unable to update tree"
             self.logging.log(error_msg, LogLevel.ERROR)
             raise ValueError(error_msg)
+        return updated_tree
+
+    def add_to_importing_list(
+        self, import_list: List[str], debug: bool = False
+    ) -> None:
+        imports_to_extend = []
+        for i in import_list:
+            if i not in self.importings:
+                imports_to_extend.append(i)
+        if debug:
+            self.logging.log(
+                [
+                    f"Previous import list: {str(self.importings)}",
+                    f"New imports: {str(imports_to_extend)}",
+                    f"New import list: {str(self.importings + imports_to_extend)}",
+                ],
+                LogLevel.DEBUG,
+            )
+        self.importings.extend(imports_to_extend)
+
+    def add_imports_to_file_tree(self, file_tree: Tree, debug: bool = False) -> Tree:
+        package_query_param = "(package_declaration) @package_decl"
+        query_results = self.query_match(
+            tree=file_tree, query_param=package_query_param
+        )
+        if len(query_results) != 1:
+            error_msg = "File package not defined or defined incorrectly"
+            self.logging.log(error_msg, LogLevel.ERROR)
+            raise ValueError(error_msg)
+        insert_byte: int = query_results[0].end_byte + 1
+        import_list = [f"import {e};" for e in self.importings]
+        merged_import_list = "\n".join(import_list)
+        updated_tree = self.insert_code_at_position(
+            merged_import_list, insert_byte, file_tree
+        )
+        if debug:
+            self.logging.log(
+                [
+                    f"Package query param: {package_query_param}",
+                    f"Query results len: {len(query_results)}",
+                    f"Insert byte: {insert_byte}",
+                    f"Merged import list: {merged_import_list}",
+                    f"Updated tree: {updated_tree}",
+                ],
+                LogLevel.DEBUG,
+            )
+        self.importings = []
         return updated_tree

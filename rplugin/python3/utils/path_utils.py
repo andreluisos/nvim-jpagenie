@@ -34,7 +34,7 @@ class PathUtils:
     def get_spring_main_class_path(self) -> Path:
         root_path = self.get_spring_project_root_path()
         for p in root_path.rglob("*.java"):
-            buffer_tree = self.treesitter_utils.convert_buffer_to_tree(p)
+            buffer_tree = self.treesitter_utils.convert_path_to_tree(p)
             buffer_is_main_class = (
                 self.treesitter_utils.buffer_public_class_has_annotation(
                     buffer_tree, "SpringBootApplication", False

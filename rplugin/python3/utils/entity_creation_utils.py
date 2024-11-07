@@ -92,7 +92,7 @@ class EntityCreationUtils:
                 ],
                 LogLevel.DEBUG,
             )
-        self.common_utils.add_to_importing_list(imports_to_add, debug)
+        self.treesitter_utils.add_to_importing_list(imports_to_add, debug)
         return template
 
     def create_new_entity(
@@ -121,8 +121,8 @@ class EntityCreationUtils:
             parent_entity_package_path=parent_entity_package_path,
             debug=debug,
         )
-        buffer_tree = self.treesitter_utils.convert_buffer_to_tree(template.encode())
-        buffer_tree = self.common_utils.add_imports_to_file_tree(buffer_tree, debug)
+        buffer_tree = self.treesitter_utils.convert_bytes_to_tree(template.encode())
+        buffer_tree = self.treesitter_utils.add_imports_to_file_tree(buffer_tree, debug)
         self.treesitter_utils.update_buffer(
             tree=buffer_tree,
             buffer_path=final_path,
@@ -142,4 +142,3 @@ class EntityCreationUtils:
                 ],
                 LogLevel.DEBUG,
             )
-        self.importings = []

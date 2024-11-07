@@ -68,7 +68,7 @@ class JpaRepositoryUtils:
                 f"Boiler plate:\n{boiler_plate}",
                 LogLevel.DEBUG,
             )
-        return self.treesitter_utils.convert_buffer_to_tree(boiler_plate.encode())
+        return self.treesitter_utils.convert_bytes_to_tree(boiler_plate.encode())
 
     def check_if_id_field_exists(self, file_tree: Tree, debug: bool = False) -> bool:
         id_field_annotation_query = """
@@ -139,7 +139,7 @@ class JpaRepositoryUtils:
         root_path = self.path_utils.get_spring_project_root_path()
         super_class_tree: Optional[Tree] = None
         for p in root_path.rglob("*.java"):
-            file_tree = self.treesitter_utils.convert_buffer_to_tree(p)
+            file_tree = self.treesitter_utils.convert_path_to_tree(p)
             query_results = self.treesitter_utils.query_match(
                 file_tree, class_name_query
             )
