@@ -1,8 +1,12 @@
 from pathlib import Path
+from typing import Optional
 
 from pynvim.api.nvim import Nvim
-from tree_sitter import Node
+from tree_sitter import Tree
 
+from custom_types.log_level import LogLevel
+from custom_types.declaration_type import DeclarationType
+from utils.common_utils import CommonUtils
 from utils.path_utils import PathUtils
 from utils.treesitter_utils import TreesitterUtils
 from utils.logging import Logging
@@ -12,259 +16,233 @@ class JpaRepositoryUtils:
     def __init__(
         self,
         nvim: Nvim,
+        java_basic_types: list[tuple],
+        common_utils: CommonUtils,
         treesitter_utils: TreesitterUtils,
         path_utils: PathUtils,
         logging: Logging,
     ):
         self.nvim = nvim
+        self.java_basic_types = java_basic_types
+        self.common_utils = common_utils
         self.treesitter_utils = treesitter_utils
         self.path_utils = path_utils
         self.logging = logging
-        self.field_declaration_query = """
-        (field_declaration
-            (modifiers
-                (annotation
-                name: (identifier) @annotation_name
-                )
-            )
-        )
-        """
-        self.id_field_annotation_query = """
-        (modifiers
-            (marker_annotation
-                name: (identifier) @annotation_name
-            )
-        )
-        """
-        self.superclass_query = """
-        (superclass
-            (type_identifier) @superclass_name
-         )
-        """
-        self.class_name_query = """
-        (class_declaration
-            name: (identifier) @class_name
-            )
-        """
+
+    def get_basic_field_type_import_path(
+        self, field_type: str, debug: bool = False
+    ) -> Optional[str]:
+        for type_tuple in self.java_basic_types:
+            if field_type == type_tuple[0]:
+                import_path: str = ""
+                if type_tuple[1] is not None:
+                    import_path = f"{type_tuple[1]}.{type_tuple[0]}"
+                else:
+                    # For primitive types or when value is None
+                    import_path = field_type[0]
+                if debug:
+                    self.logging.log(
+                        [f"Field type: {field_type}", f"Import path: {import_path}"],
+                        LogLevel.DEBUG,
+                    )
+                return import_path
+        if debug:
+            self.logging.log(f"Field type {field_type} not found", LogLevel.DEBUG)
 
     def generate_jpa_repository_template(
         self, class_name: str, package_path: str, id_type: str, debug: bool = False
-    ) -> str:
-        id_type_import_path = self.treesitter_utils.get_field_type_import_path(
-            id_type, debug
-        )
+    ) -> Tree:
+        id_type_import_path = self.get_basic_field_type_import_path(id_type, debug)
         boiler_plate = (
             f"package {package_path};\n\n"
             f"import org.springframework.data.jpa.repository.JpaRepository;\n\n"
         )
         if id_type_import_path:
             boiler_plate += f"import {id_type_import_path};\n\n"
-        boiler_plate += f"public interface {class_name}Repository extends JpaRepository<{class_name}, {id_type}> {{}}"
+        boiler_plate += (
+            f"public interface {class_name}Repository "
+            f"extends JpaRepository<{class_name}, {id_type}> {{}}"
+        )
         if debug:
             self.logging.log(
                 f"Boiler plate:\n{boiler_plate}",
-                "debug",
+                LogLevel.DEBUG,
             )
-        return boiler_plate
+        return self.treesitter_utils.convert_buffer_to_tree(boiler_plate.encode())
 
-    def check_if_id_field_exists(self, buffer_node: Node, debug: bool = False) -> bool:
-        results = self.treesitter_utils.query_node(
-            buffer_node, self.id_field_annotation_query, debug=debug
+    def check_if_id_field_exists(self, file_tree: Tree, debug: bool = False) -> bool:
+        id_field_annotation_query = """
+        (modifiers
+            (marker_annotation
+                name: (identifier) @annotation_name
+            )
         )
-        id_annotation_found = self.treesitter_utils.query_results_has_term(
-            results, "Id", debug=debug
+        """
+        query_results = self.treesitter_utils.query_match(
+            file_tree, id_field_annotation_query
         )
+        id_annotation_found = False
+        for result in query_results:
+            if result.text and result.text.decode() == "Id":
+                id_annotation_found = True
         if debug:
             self.logging.log(
                 f"ID annotation found: {id_annotation_found}",
-                "debug",
+                LogLevel.DEBUG,
             )
         return id_annotation_found
 
-    def get_superclass_query_node(
-        self, buffer_node: Node, debug: bool = False
-    ) -> Node | None:
-        results = self.treesitter_utils.query_node(
-            buffer_node, self.superclass_query, debug=debug
+    def get_superclass_name(
+        self, file_tree: Tree, debug: bool = False
+    ) -> Optional[str]:
+        superclass_name: Optional[str] = None
+        class_declaration_query = "(class_declaration) @class_decl"
+        super_class_query = """
+        (class_declaration
+            superclass: (superclass
+                (type_identifier) @superclass_type))
+        """
+        query_results = self.treesitter_utils.query_match(
+            file_tree, class_declaration_query
         )
+        main_class_node = (
+            self.treesitter_utils.get_buffer_public_class_node_from_query_results(
+                query_results, debug
+            )
+        )
+        if main_class_node:
+            main_class_tree = self.treesitter_utils.convert_node_to_tree(
+                main_class_node
+            )
+            query_results = self.treesitter_utils.query_match(
+                main_class_tree, super_class_query
+            )
+            if len(query_results) != 1:
+                return None
+            if query_results[0].text:
+                superclass_name = query_results[0].text.decode()
         if debug:
             self.logging.log(
-                f"Superclass query results: {results}",
-                "debug",
+                f"Superclass name: {superclass_name}",
+                LogLevel.DEBUG,
             )
-        if len(results) == 0:
-            return None
-        return results[0][0]
+        return superclass_name
 
-    def find_superclass_file_node(
-        self, root_path: Path, superclass_name: str, debug: bool = False
-    ) -> Node | None:
+    def find_superclass_file_tree(
+        self, superclass_name: str, debug: bool = False
+    ) -> Optional[Tree]:
+        class_name_query = """
+        (class_declaration
+            name: (identifier) @class_name
+            )
+        """
+        root_path = self.path_utils.get_spring_project_root_path()
+        super_class_tree: Optional[Tree] = None
         for p in root_path.rglob("*.java"):
-            node = self.treesitter_utils.get_node_from_path(p, debug=debug)
-            results = self.treesitter_utils.query_node(
-                node, self.class_name_query, debug=debug
+            file_tree = self.treesitter_utils.convert_buffer_to_tree(p)
+            query_results = self.treesitter_utils.query_match(
+                file_tree, class_name_query
             )
-            if debug:
-                self.logging.log(
-                    [
-                        f"File path: {p}",
-                        f"Node: {node}",
-                        f"Query results: {results}",
-                    ],
-                    "debug",
-                )
-            if len(results) == 0:
+            if len(query_results) == 0:
                 continue
-            class_name = self.treesitter_utils.get_node_text(results[0][0], debug=debug)
-            if debug:
-                self.logging.log(
-                    [
-                        f"Class name: {class_name}",
-                    ],
-                    "debug",
-                )
-            if class_name == superclass_name:
-                return node
-        return None
-
-    def find_id_field_type(self, buffer_node: Node, debug: bool = False) -> str | None:
-        # TODO: refactor
-        child_nodes = buffer_node.children
-        for child in child_nodes:
-            if child.type != "class_declaration":
-                self.find_id_field_type(child)
-                continue
-            for class_body in child.children:
-                if class_body.type != "class_body":
-                    continue
-                for field_declaration in class_body.children:
-                    if field_declaration.type != "field_declaration":
-                        continue
-                    id_field_found = False
-                    for field_component in field_declaration.children:
-                        if field_component.type == "modifiers":
-                            for modifier in field_component.children:
-                                if modifier.type == "marker_annotation":
-                                    for identifier in modifier.children:
-                                        if identifier.type == "identifier":
-                                            if (
-                                                self.treesitter_utils.get_node_text(
-                                                    identifier
-                                                )
-                                                == "Id"
-                                            ):
-                                                id_field_found = True
-                                                if debug:
-                                                    self.logging.log(
-                                                        "Id field found",
-                                                        "debug",
-                                                    )
-                        if id_field_found and field_component.type == "type_identifier":
-                            id_field_type = self.treesitter_utils.get_node_text(
-                                field_component
-                            )
-                            if debug:
-                                self.logging.log(
-                                    f"Id field type: {id_field_type}",
-                                    "debug",
-                                )
-                            return id_field_type
+            for result in query_results:
+                if result.text and result.text.decode() == superclass_name:
+                    return file_tree
         if debug:
-            self.logging.log("Id field type not found", "debug")
-        return None
+            self.logging.log(
+                [
+                    f"Query param: {class_name_query}",
+                    f"Found superclass tree: {super_class_tree.__repr__() if super_class_tree else None}",
+                ],
+                LogLevel.DEBUG,
+            )
+        return super_class_tree
 
-    def create_jpa_repository_file(
-        self,
-        buffer_path: Path,
-        class_name: str,
-        boiler_plate: str,
-        debug: bool = False,
-    ) -> None:
-        file_path = buffer_path.parent.joinpath(f"{class_name}Repository.java")
-        self.treesitter_utils.update_buffer(
-            boiler_plate.encode("utf-8"), file_path, False, True, True
+    def find_id_field_type(self, file_tree: Tree, debug: bool = False) -> Optional[str]:
+        field_marker_name_query = """
+        (field_declaration
+            (modifiers
+                (marker_annotation) @marker_annotation))
+        """
+        query_results = self.treesitter_utils.query_match(
+            file_tree, field_marker_name_query
         )
+        if len(query_results) != 1:
+            return None
+        id_field_type: Optional[str] = None
+        modifiers = query_results[0].parent
+        if modifiers and modifiers.parent:
+            field_declaration = modifiers.parent.child_by_field_name("type")
+            if field_declaration and field_declaration.text:
+                id_field_type = field_declaration.text.decode()
         if debug:
-            self.logging.log(
-                f"JPA repository path: {file_path}",
-                "debug",
-            )
+            self.logging.log(f"Id field type: {id_field_type}", LogLevel.DEBUG)
+        return id_field_type
 
-    def create_jpa_entity_for_current_buffer(
-        self, root_path: Path, debug: bool = False
-    ) -> None:
-        buffer_path = Path(self.nvim.current.buffer.name)
-        node = self.treesitter_utils.get_node_from_path(buffer_path, debug=debug)
-        class_name = self.treesitter_utils.get_buffer_class_name(node, debug=debug)
-        package_path = self.path_utils.get_buffer_package_path(buffer_path, debug=debug)
-        if class_name is None:
-            error_msg = "Couldn't find the class name for this buffer"
+    def create_jpa_repository(self, buffer_path: Path, debug: bool = False) -> None:
+        file_data = self.common_utils.get_java_file_data(buffer_path, debug)
+        if file_data is None:
+            error_msg = "Couldn't get file data"
             self.logging.log(
                 error_msg,
-                "error",
-            )
-            raise FileNotFoundError(error_msg)
-        if not self.treesitter_utils.is_buffer_jpa_entity(buffer_path):
-            error_msg = "Current buffer isn't a JPA entity"
-            self.logging.log(
-                error_msg,
-                "error",
+                LogLevel.DEBUG,
             )
             raise ValueError(error_msg)
-        if not self.check_if_id_field_exists(node, debug=debug):
-            superclass_name_node = self.get_superclass_query_node(node, debug=debug)
-            if not superclass_name_node:
-                error_msg = (
-                    "No Id found for this entity and no superclass to look for it"
-                )
+        if (
+            not file_data.is_jpa_entity
+            or file_data.declaration_type != DeclarationType.CLASS
+        ):
+            error_msg = "Invalid JPA Entity"
+            self.logging.log(error_msg, LogLevel.ERROR)
+            raise ValueError(error_msg)
+        if not self.check_if_id_field_exists(file_data.tree, debug=debug):
+            error_msg = "Unable to get superclass data"
+            superclass_name = self.get_superclass_name(file_data.tree)
+            if not superclass_name:
+                self.logging.log(error_msg, LogLevel.ERROR)
+                raise ValueError(error_msg)
+            superclass_tree = self.find_superclass_file_tree(superclass_name, debug)
+            if superclass_tree is None:
                 self.logging.log(
                     error_msg,
-                    "error",
+                    LogLevel.ERROR,
                 )
                 raise ValueError(error_msg)
-            superclass_name = self.treesitter_utils.get_node_text(
-                superclass_name_node, debug=debug
-            )
-            superclass_node = self.find_superclass_file_node(
-                root_path, superclass_name, debug
-            )
-            if superclass_node is None:
-                error_msg = "Unable to locate the superclass buffer"
-                self.logging.log(
-                    error_msg,
-                    "error",
-                )
-                raise ValueError(error_msg)
-            if not self.check_if_id_field_exists(superclass_node, debug=debug):
+            if not self.check_if_id_field_exists(superclass_tree, debug=debug):
                 # TODO: Keep checking for superclasses?
                 error_msg = "Unable to find the Id field on the superclass"
                 self.logging.log(
                     error_msg,
-                    "error",
+                    LogLevel.ERROR,
                 )
                 raise ValueError(error_msg)
-            id_type = self.find_id_field_type(superclass_node, debug=debug)
+            id_type = self.find_id_field_type(superclass_tree, debug=debug)
             if id_type is None:
                 error_msg = "Unable to find get the Id field type on the superclass"
                 self.logging.log(
                     error_msg,
-                    "error",
+                    LogLevel.ERROR,
                 )
                 raise ValueError(error_msg)
-            boiler_plate = self.generate_jpa_repository_template(
-                class_name=class_name,
-                package_path=package_path,
+            jpa_repo_tree = self.generate_jpa_repository_template(
+                class_name=file_data.file_name,
+                package_path=file_data.package_path,
                 id_type=id_type,
                 debug=debug,
             )
-            self.create_jpa_repository_file(
-                buffer_path=buffer_path,
-                class_name=class_name,
-                boiler_plate=boiler_plate,
-                debug=debug,
+            jpa_repo_path = buffer_path.parent.joinpath(
+                f"{file_data.file_name}Repository.java"
+            )
+            self.treesitter_utils.update_buffer(
+                tree=jpa_repo_tree,
+                buffer_path=jpa_repo_path,
+                save=False,
+                format=True,
+                organize_imports=True,
+                debug=True,
             )
             if debug:
                 self.logging.log(
-                    f"Boiler plate:\n{boiler_plate}\n",
-                    "debug",
+                    f"JPA Repository tree:\n{jpa_repo_tree.__repr__()}\n",
+                    LogLevel.DEBUG,
                 )
