@@ -282,7 +282,7 @@ class EntityFieldUtils:
         updated_buffer_tree = self.treesitter_utils.add_imports_to_file_tree(
             buffer_tree, debug
         )
-        insert_byte = self.common_utils.get_entity_field_insert_byte(
+        insert_byte = self.treesitter_utils.get_entity_field_insert_byte(
             updated_buffer_tree, debug
         )
         if not insert_byte:
