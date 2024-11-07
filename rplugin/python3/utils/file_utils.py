@@ -1,5 +1,6 @@
 from pathlib import Path
 
+from custom_types.log_level import LogLevel
 from utils.logging import Logging
 
 
@@ -19,6 +20,6 @@ class FileUtils:
                         f"File path: {str(file_path)}",
                         f"File content:\n{file_content_str}",
                     ],
-                    "debug",
+                    LogLevel.DEBUG,
                 )
             return file_content_str
