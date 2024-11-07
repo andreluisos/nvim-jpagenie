@@ -2,17 +2,17 @@ from pathlib import Path
 from typing import List, Optional
 
 from pynvim.api.nvim import Nvim
+from tree_sitter import Tree
 
+from custom_types.enum_type import EnumType
+from custom_types.field_time_zone_storage import FieldTimeZoneStorage
+from custom_types.field_temporal import FieldTemporal
+from custom_types.id_generation import IdGeneration
+from custom_types.id_generation_type import IdGenerationType
+from custom_types.log_level import LogLevel
 from utils.treesitter_utils import TreesitterUtils
 from utils.common_utils import CommonUtils
 from utils.logging import Logging
-from utils.data_types import (
-    FieldTimeZoneStorage,
-    FieldTemporal,
-    EnumType,
-    IdGeneration,
-    IdGenerationType,
-)
 
 
 class EntityFieldUtils:
@@ -29,8 +29,71 @@ class EntityFieldUtils:
         self.logging = logging
         self.java_basic_types = java_basic_types
         self.common_utils = common_utils
-        self.importings: List[str] = []
-        self.class_body_query = "(class_body) @body"
+
+    def get_entity_field_insert_byte(
+        self, file_tree: Tree, debug: bool = False
+    ) -> Optional[int]:
+        insert_byte: Optional[int] = None
+        query_results = self.treesitter_utils.query_match(
+            file_tree, "(class_declaration) @class_decl"
+        )
+        main_class_node = (
+            self.treesitter_utils.get_buffer_public_class_node_from_query_results(
+                query_results, debug
+            )
+        )
+        if main_class_node:
+            class_body = main_class_node.child_by_field_name("body")
+            if class_body:
+                field_declarations = class_body.children
+                if len(field_declarations) != 0:
+                    insert_byte = field_declarations[-1].end_byte - 1
+                else:
+                    insert_byte = class_body.start_byte
+        if debug:
+            self.logging.log(f"Insert byte: {insert_byte}", LogLevel.DEBUG)
+        return insert_byte
+
+    def generate_field_name(
+        self, field_type: str, plural: bool = False, debug: bool = False
+    ) -> str:
+        field_name = field_type
+        if plural:
+            field_name = self.common_utils.pluralize_word(field_name)
+        field_name = field_name[0].lower() + field_name[1:]
+        if debug:
+            self.logging.log(f"Field name: {field_name}", LogLevel.DEBUG)
+        return field_name
+
+    def merge_field_params(self, params: List[str], debug: bool = False) -> str:
+        merged_params = ", ".join(params)
+        if debug:
+            self.logging.log(f"Merged params: {merged_params}", LogLevel.DEBUG)
+        return ", ".join(params)
+
+    def generate_field_column_line(self, params: List[str], debug: bool = False) -> str:
+        merged_params = self.merge_field_params(params, debug)
+        column_line = f"@Column({merged_params})"
+        if debug:
+            self.logging.log(
+                [
+                    f"Merged params: {merged_params}",
+                    f"Column line: {column_line}",
+                ],
+                LogLevel.DEBUG,
+            )
+        return column_line
+
+    def generate_field_body_line(
+        self, field_type: str, field_name: str, debug: bool = False
+    ) -> str:
+        field_body_line = f"private {field_type} {field_name};"
+        if debug:
+            self.logging.log(
+                f"Field body line: {field_body_line }",
+                LogLevel.DEBUG,
+            )
+        return field_body_line
 
     def generate_basic_field_template(
         self,
@@ -47,14 +110,13 @@ class EntityFieldUtils:
         large_object: bool = False,
         debug: bool = False,
     ) -> str:
-        snaked_field_name = self.common_utils.generate_snaked_field_name(
-            field_name, debug
-        )
+        imports_to_add: List[str] = []
+        snaked_field_name = self.common_utils.convert_to_snake_case(field_name, debug)
         column_params: List[str] = [f'name = "{snaked_field_name}"']
         template = ""
-        self.importings.append("jakarta.persistence.Column")
+        imports_to_add.append("jakarta.persistence.Column")
         if "." in field_package_path:
-            self.importings.append(field_package_path)
+            imports_to_add.append(field_package_path)
         if (
             field_package_path
             in [
@@ -80,7 +142,7 @@ class EntityFieldUtils:
             ]
             and field_time_zone_storage is not None
         ):
-            self.importings.extend(
+            imports_to_add.extend(
                 [
                     "org.hibernate.annotations.TimeZoneStorage",
                     "org.hibernate.annotations.TimeZoneStorageType",
@@ -97,7 +159,7 @@ class EntityFieldUtils:
             ]
             and field_temporal is not None
         ):
-            self.importings.extend(
+            imports_to_add.extend(
                 ["jakarta.persistence.Temporal", "jakarta.persistence.TemporalType"]
             )
             template += f"@Temporal(TemporalType.{field_temporal})\n"
@@ -110,17 +172,17 @@ class EntityFieldUtils:
                 [f"precision = {field_precision}", f"scale = {field_scale}"]
             )
         if large_object:
-            self.importings.append("jakarta.persistence.Lob")
+            imports_to_add.append("jakarta.persistence.Lob")
             template += "@Lob\n"
         if mandatory:
             column_params.append("nullable = true")
         if unique:
             column_params.append("unique = true")
-        column_body = self.common_utils.generate_field_column_line(column_params, debug)
-        field_body = self.common_utils.generate_field_body_line(
-            field_type, field_name, debug
+        column_body = self.generate_field_column_line(column_params, debug)
+        field_body = self.generate_field_body_line(
+            field_type, self.generate_field_name(field_name, debug), debug
         )
-        template += column_body + "\n" + field_body + "\n\n"
+        template += "\n\t" + column_body + "\n\t" + field_body + "\n"
         if debug:
             self.logging.log(
                 [
@@ -130,8 +192,9 @@ class EntityFieldUtils:
                     f"Field body: {field_body}",
                     f"Final template: {template}",
                 ],
-                "debug",
+                LogLevel.DEBUG,
             )
+        self.treesitter_utils.add_to_importing_list(imports_to_add, debug)
         return template
 
     def generate_id_field_template(
@@ -148,12 +211,11 @@ class EntityFieldUtils:
         mandatory: bool = False,
         debug: bool = False,
     ) -> str:
-        snaked_field_name = self.common_utils.generate_snaked_field_name(
-            field_name, debug
-        )
+        imports_to_add = ["jakarta.persistence.Column"]
+        snaked_field_name = self.common_utils.convert_to_snake_case(field_name, debug)
         column_params: List[str] = [f'name = "{snaked_field_name}"']
-        template = "@Id\n"
-        self.importings.extend(
+        template = "\n\t@Id\n"
+        imports_to_add.extend(
             [
                 "jakarta.persistence.GeneratedValue",
                 "jakarta.persistence.GenerationType",
@@ -164,17 +226,15 @@ class EntityFieldUtils:
         if mandatory:
             column_params.append("nullable = true")
         if id_generation == "sequence":
-            generated_value_body = (
-                f"@GeneratedValue(strategy = GenerationType.{id_generation.upper()}"
-            )
+            generated_value_body = f"\t@GeneratedValue(strategy = GenerationType.{id_generation.value.upper()}"
             if (
                 id_generation == "sequence"
                 and id_generation_type == "entity_exclusive_generation"
             ):
                 generated_value_body += f', generator = "{generator_name}"'
-                generated_value_body += ")\n"
+                generated_value_body += ")"
                 sequence_generator_body = (
-                    f'@SequenceGenerator(name = "{generator_name}", '
+                    f'\t@SequenceGenerator(name = "{generator_name}", '
                     f'sequenceName = "{sequence_name}"'
                 )
                 if initial_value != 1 and initial_value is not None:
@@ -184,14 +244,12 @@ class EntityFieldUtils:
                 sequence_generator_body += ")\n"
                 template += generated_value_body + sequence_generator_body
         if id_generation != "none":
-            template += (
-                f"@GeneratedValue(strategy = GenerationType.{id_generation.upper()})\n"
-            )
-        column_body = self.common_utils.generate_field_column_line(column_params, debug)
-        field_body = self.common_utils.generate_field_body_line(
-            field_type, field_name, debug
+            template += f"\t@GeneratedValue(strategy = GenerationType.{id_generation.value.upper()})"
+        column_body = self.generate_field_column_line(column_params, debug)
+        field_body = self.generate_field_body_line(
+            field_type, self.generate_field_name(field_name, debug), debug
         )
-        template += column_body + "\n" + field_body + "\n\n"
+        template += "\n\t" + column_body + "\n\t" + field_body + "\n"
         if debug:
             self.logging.log(
                 [
@@ -201,8 +259,9 @@ class EntityFieldUtils:
                     f"Field body: {field_body}",
                     f"Final template: {template}",
                 ],
-                "debug",
+                LogLevel.DEBUG,
             )
+        self.treesitter_utils.add_to_importing_list(imports_to_add, debug)
         return template
 
     def generate_enum_field_template(
@@ -211,34 +270,33 @@ class EntityFieldUtils:
         field_type: str,
         field_name: str,
         field_length: Optional[int],
-        enum_type: EnumType = "ORDINAL",
+        enum_type: EnumType = EnumType.ORDINAL,
         mandatory: bool = False,
         unique: bool = False,
         debug: bool = False,
     ) -> str:
-        snaked_field_name = self.common_utils.generate_snaked_field_name(
-            field_name, debug
-        )
+        imports_to_add: List[str] = ["jakarta.persistence.Column"]
+        snaked_field_name = self.common_utils.convert_to_snake_case(field_name, debug)
         column_params: List[str] = [f'name = "{snaked_field_name}"']
-        self.importings.extend(
+        imports_to_add.extend(
             [
                 "jakarta.persistence.Enumerated",
                 "jakarta.persistence.EnumType",
                 field_package_path,
             ]
         )
-        template = f"@Enumerated(EnumType.{enum_type})\n"
+        template = f"\n\t@Enumerated({enum_type})"
         if enum_type == "STRING" and field_length and field_length != 255:
             column_params.append(f"length = {field_length}")
         if mandatory:
             column_params.append("nullable = true")
         if unique:
             column_params.append("unique = true")
-        column_body = self.common_utils.generate_field_column_line(column_params, debug)
-        field_body = self.common_utils.generate_field_body_line(
-            field_type, field_name, debug
+        column_body = self.generate_field_column_line(column_params, debug)
+        field_body = self.generate_field_body_line(
+            field_type, self.generate_field_name(field_name, debug), debug
         )
-        template += column_body + "\n" + field_body + "\n\n"
+        template += "\n\t" + column_body + "\n\t" + field_body + "\n"
         if debug:
             self.logging.log(
                 [
@@ -248,13 +306,43 @@ class EntityFieldUtils:
                     f"Field body: {field_body}",
                     f"Final template: {template}",
                 ],
-                "debug",
+                LogLevel.DEBUG,
             )
+        self.treesitter_utils.add_to_importing_list(imports_to_add, debug)
         return template
+
+    def update_buffer(
+        self, buffer_tree: Tree, buffer_path: Path, template: str, debug: bool = False
+    ) -> None:
+        updated_buffer_tree = self.treesitter_utils.add_imports_to_file_tree(
+            buffer_tree, debug
+        )
+        insert_byte = self.get_entity_field_insert_byte(updated_buffer_tree, debug)
+        if not insert_byte:
+            error_msg = "Unable to get field insert position"
+            self.logging.log(error_msg, LogLevel.ERROR)
+            raise ValueError(error_msg)
+        updated_buffer_tree = self.treesitter_utils.insert_code_at_position(
+            template, insert_byte, updated_buffer_tree
+        )
+        self.treesitter_utils.update_buffer(
+            tree=updated_buffer_tree,
+            buffer_path=buffer_path,
+            save=True,
+        )
+        if debug:
+            self.logging.log(
+                [
+                    f"Template:\n{template}\n"
+                    f"Node before:\n{self.treesitter_utils.get_node_text_as_string(buffer_tree.root_node)}\n"
+                    f"Node after:\n{self.treesitter_utils.get_node_text_as_string(updated_buffer_tree.root_node)}\n"
+                ],
+                LogLevel.DEBUG,
+            )
 
     def create_basic_entity_field(
         self,
-        buffer_bytes: bytes,
+        buffer_tree: Tree,
         buffer_path: Path,
         field_package_path: str,
         field_type: str,
@@ -269,7 +357,7 @@ class EntityFieldUtils:
         large_object: bool,
         debug: bool = False,
     ) -> None:
-        template = "\n\n" + self.generate_basic_field_template(
+        template = self.generate_basic_field_template(
             field_package_path=field_package_path,
             field_type=field_type,
             field_name=field_name,
@@ -283,53 +371,22 @@ class EntityFieldUtils:
             large_object=large_object,
             debug=debug,
         )
-        buffer_bytes = self.common_utils.add_imports_to_buffer(
-            self.importings, buffer_bytes, debug
-        )
-        insert_position = self.treesitter_utils.get_entity_field_insert_point(
-            buffer_bytes, debug
-        )
-        class_body_position = self.treesitter_utils.query_node(
-            self.treesitter_utils.get_node_from_bytes(buffer_bytes),
-            self.class_body_query,
-            debug,
-        )[0][0].start_byte
-        if insert_position < class_body_position:
-            insert_position = class_body_position + 1
-        buffer_bytes = self.treesitter_utils.insert_code_into_position(
-            template, insert_position, buffer_bytes, debug
-        )
-        self.treesitter_utils.update_buffer(
-            buffer_bytes=buffer_bytes,
-            buffer_path=buffer_path,
-            save=False,
-            format=True,
-            organize_imports=True,
-        )
-        if debug:
-            self.logging.log(
-                [
-                    f"Template:\n{template}\n"
-                    f"Buffer before:\n{buffer_bytes.decode('utf-8')}\n"
-                    f"Buffer after:\n{buffer_bytes.decode('utf-8')}\n"
-                ],
-                "debug",
-            )
+        self.update_buffer(buffer_tree, buffer_path, template, debug)
 
     def create_enum_entity_field(
         self,
-        buffer_bytes: bytes,
+        buffer_tree: Tree,
         buffer_path: Path,
         field_package_path: str,
         field_type: str,
         field_name: str,
         field_length: Optional[int],
-        enum_type: EnumType = "ORDINAL",
+        enum_type: EnumType = EnumType.ORDINAL,
         mandatory: bool = False,
         unique: bool = False,
         debug: bool = False,
     ) -> None:
-        template = "\n\n" + self.generate_enum_field_template(
+        template = self.generate_enum_field_template(
             field_package_path=field_package_path + "." + field_type,
             field_type=field_type,
             field_name=field_name,
@@ -339,35 +396,11 @@ class EntityFieldUtils:
             unique=unique,
             debug=debug,
         )
-        buffer_bytes = self.common_utils.add_imports_to_buffer(
-            self.importings, buffer_bytes, debug
-        )
-        insert_position = self.treesitter_utils.get_entity_field_insert_point(
-            buffer_bytes, debug
-        )
-        buffer_bytes = self.treesitter_utils.insert_code_into_position(
-            template, insert_position, buffer_bytes, debug
-        )
-        self.treesitter_utils.update_buffer(
-            buffer_bytes=buffer_bytes,
-            buffer_path=buffer_path,
-            save=False,
-            format=True,
-            organize_imports=True,
-        )
-        if debug:
-            self.logging.log(
-                [
-                    f"Template:\n{template}\n"
-                    f"Buffer before:\n{buffer_bytes.decode('utf-8')}\n"
-                    f"Buffer after:\n{buffer_bytes.decode('utf-8')}\n"
-                ],
-                "debug",
-            )
+        self.update_buffer(buffer_tree, buffer_path, template, debug)
 
     def create_id_entity_field(
         self,
-        buffer_bytes: bytes,
+        buffer_tree: Tree,
         buffer_path: Path,
         field_package_path: str,
         field_type: str,
@@ -381,8 +414,8 @@ class EntityFieldUtils:
         mandatory: bool = False,
         debug: bool = False,
     ) -> None:
-        template = "\n\n" + self.generate_id_field_template(
-            field_package_path=field_package_path + "." + field_type,
+        template = self.generate_id_field_template(
+            field_package_path=field_package_path,
             field_type=field_type,
             field_name=field_name,
             id_generation=id_generation,
@@ -394,28 +427,4 @@ class EntityFieldUtils:
             mandatory=mandatory,
             debug=debug,
         )
-        buffer_bytes = self.common_utils.add_imports_to_buffer(
-            self.importings, buffer_bytes, debug
-        )
-        insert_position = self.treesitter_utils.get_entity_field_insert_point(
-            buffer_bytes, debug
-        )
-        buffer_bytes = self.treesitter_utils.insert_code_into_position(
-            template, insert_position, buffer_bytes, debug
-        )
-        self.treesitter_utils.update_buffer(
-            buffer_bytes=buffer_bytes,
-            buffer_path=buffer_path,
-            save=False,
-            format=True,
-            organize_imports=True,
-        )
-        if debug:
-            self.logging.log(
-                [
-                    f"Template:\n{template}\n"
-                    f"Buffer before:\n{buffer_bytes.decode('utf-8')}\n"
-                    f"Buffer after:\n{buffer_bytes.decode('utf-8')}\n"
-                ],
-                "debug",
-            )
+        self.update_buffer(buffer_tree, buffer_path, template, debug)

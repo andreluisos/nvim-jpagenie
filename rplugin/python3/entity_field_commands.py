@@ -5,6 +5,12 @@ from pynvim import plugin, command, function
 from pynvim.api import Nvim
 
 from base import Base
+from custom_types.enum_type import EnumType
+from custom_types.field_temporal import FieldTemporal
+from custom_types.field_time_zone_storage import FieldTimeZoneStorage
+from custom_types.declaration_type import DeclarationType
+from custom_types.id_generation import IdGeneration
+from custom_types.id_generation_type import IdGenerationType
 
 
 @plugin
@@ -26,12 +32,12 @@ class EntityFieldCommands(Base):
 
     @function("CreateBasicEntityFieldCallback")
     def crease_basic_entity_field_callback(self, args):
-        buffer_bytes = self.treesitter_utils.get_bytes_from_buffer(
+        buffer_tree = self.treesitter_utils.convert_buffer_to_tree(
             self.nvim.current.buffer
         )
         buffer_path = Path(self.nvim.current.buffer.name)
         self.entity_field_utils.create_basic_entity_field(
-            buffer_bytes=buffer_bytes,
+            buffer_tree=buffer_tree,
             buffer_path=buffer_path,
             field_package_path=args[0]["field_package_path"],
             field_type=args[0]["field_type"],
@@ -40,12 +46,14 @@ class EntityFieldCommands(Base):
             field_precision=args[0]["field_precision"],
             field_scale=args[0]["field_scale"],
             field_time_zone_storage=(
-                args[0]["field_time_zone_storage"]
+                FieldTimeZoneStorage.from_value(args[0]["field_time_zone_storage"])
                 if "field_time_zone_storage" in args[0]
                 else None
             ),
             field_temporal=(
-                args[0]["field_temporal"] if "field_temporal" in args[0] else None
+                FieldTemporal(args[0]["field_temporal"])
+                if "field_temporal" in args[0]
+                else None
             ),
             mandatory=True if "mandatory" in args[0]["other"] else False,
             unique=True if "unique" in args[0]["other"] else False,
@@ -56,14 +64,18 @@ class EntityFieldCommands(Base):
     @command("CreateEnumEntityField")
     def create_enum_entity_field(self) -> None:
         self.logging.reset_log_file()
+        all_java_files = self.common_utils.get_all_java_files_data(True)
+        all_enum_files = [
+            f for f in all_java_files if f.declaration_type == DeclarationType.ENUM
+        ]
         data = [
             {
-                "name": f"{v[0]} ({v[1]})",
-                "package_path": f"{v[1]}",
-                "type": f"{v[0]}",
-                "id": f"{v[2]}",
+                "name": f"{v.file_name} ({v.package_path})",
+                "package_path": f"{v.package_path}",
+                "type": f"{v.file_name}",
+                "id": f"{v.path}",
             }
-            for v in self.path_utils.get_all_files_by_declaration_type("enum", True)
+            for v in all_enum_files
         ]
         self.nvim.exec_lua(
             self.file_utils.read_ui_file_as_string("enum_field.lua"),
@@ -72,18 +84,18 @@ class EntityFieldCommands(Base):
 
     @function("CreateEnumEntityFieldCallback")
     def crease_enum_entity_field_callback(self, args):
-        buffer_bytes = self.treesitter_utils.get_bytes_from_buffer(
+        buffer_tree = self.treesitter_utils.convert_buffer_to_tree(
             self.nvim.current.buffer
         )
         buffer_path = Path(self.nvim.current.buffer.name)
         self.entity_field_utils.create_enum_entity_field(
-            buffer_bytes=buffer_bytes,
+            buffer_tree=buffer_tree,
             buffer_path=buffer_path,
             field_package_path=args[0]["field_package_path"],
             field_name=args[0]["field_name"],
             field_type=args[0]["field_type"],
             field_length=args[0]["field_length"],
-            enum_type=args[0]["enum_type"],
+            enum_type=EnumType.from_value(args[0]["enum_type"]),
             mandatory=True if "mandatory" in args[0]["other"] else False,
             unique=True if "unique" in args[0]["other"] else False,
             debug=True,
@@ -98,10 +110,10 @@ class EntityFieldCommands(Base):
             if v[0] in ["Long", "Integer", "String", "UUID"]
         ]
         buffer_path = Path(self.nvim.current.buffer.name)
-        class_name = self.treesitter_utils.get_buffer_class_name(buffer_path, True)
-        if class_name:
-            snaked_class_name = self.common_utils.generate_snaked_field_name(
-                class_name, True
+        buffer_java_file_data = self.common_utils.get_java_file_data(buffer_path, True)
+        if buffer_java_file_data:
+            snaked_class_name = self.common_utils.convert_to_snake_case(
+                buffer_java_file_data.file_name
             )
             self.nvim.exec_lua(
                 self.file_utils.read_ui_file_as_string("id_field.lua"),
@@ -110,21 +122,19 @@ class EntityFieldCommands(Base):
 
     @function("CreateIdEntityFieldCallback")
     def crease_id_entity_field_callback(self, args):
-        buffer_bytes = self.treesitter_utils.get_bytes_from_buffer(
+        buffer_tree = self.treesitter_utils.convert_buffer_to_tree(
             self.nvim.current.buffer
         )
         buffer_path = Path(self.nvim.current.buffer.name)
         self.entity_field_utils.create_id_entity_field(
-            buffer_bytes=buffer_bytes,
+            buffer_tree=buffer_tree,
             buffer_path=buffer_path,
             field_package_path=args[0]["field_package_path"],
             field_type=args[0]["field_type"],
             field_name=args[0]["field_name"],
-            id_generation=args[0]["id_generation"],
-            id_generation_type=(
+            id_generation=IdGeneration.from_value(args[0]["id_generation"]),
+            id_generation_type=IdGenerationType.from_value(
                 args[0]["id_generation_type"]
-                if args[0]["id_generation"] == "sequence"
-                else None
             ),
             generator_name=(
                 args[0]["generator_name"]
