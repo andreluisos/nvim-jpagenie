@@ -58,6 +58,14 @@ class TreesitterUtils:
             self.logging.log(error_msg, LogLevel.ERROR)
             raise RuntimeError(error_msg)
 
+    def convert_node_to_tree(self, node: Node) -> Tree:
+        if node.text:
+            return self.convert_buffer_to_tree(node.text)
+        else:
+            error_msg = "Unable to convert node into tree"
+            self.logging.log(error_msg, LogLevel.ERROR)
+            raise RuntimeError(error_msg)
+
     def query_match(self, tree: Tree, query_param: str) -> List[Node]:
         try:
             query: Query = self.ts_java.query(query_param)
