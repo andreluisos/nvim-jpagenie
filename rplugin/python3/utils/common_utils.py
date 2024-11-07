@@ -1,5 +1,5 @@
 from re import sub
-from typing import List
+from typing import List, Optional
 
 from tree_sitter import Tree
 from custom_types.java_file_data import JavaFileData
@@ -78,9 +78,10 @@ class CommonUtils:
             )
         return package_path
 
-    def get_all_java_files_data(self, debug: bool = False) -> List[JavaFileData]:
-        root_path = self.path_utils.get_spring_project_root_path()
-        files_found: List[JavaFileData] = []
+    def get_java_file_data(
+        self, file_path: Path, debug: bool = False
+    ) -> Optional[JavaFileData]:
+        file_tree = self.treesitter_utils.convert_buffer_to_tree(file_path)
         decl_type_query_param = """
         [
             (class_declaration) 
@@ -90,56 +91,59 @@ class CommonUtils:
             (record_declaration)
         ] @decl_type 
         """
+        query_result = self.treesitter_utils.query_match(
+            file_tree, decl_type_query_param
+        )
+        for result in query_result:
+            decl_name = result.child_by_field_name("name")
+            if decl_name and decl_name.text and result.text:
+                decl_name_str = self.treesitter_utils.convert_bytes_to_string(
+                    decl_name.text
+                )
+                if decl_name_str == file_path.stem:
+                    result_tree = self.treesitter_utils.convert_buffer_to_tree(
+                        result.text
+                    )
+                    declaration_type: DeclarationType = DeclarationType.CLASS
+                    is_jpa_entity = (
+                        self.treesitter_utils.buffer_public_class_has_annotation(
+                            tree=result_tree, annotation_name="Entity", debug=debug
+                        )
+                    )
+                    if result.type == "class_declaration":
+                        declaration_type = DeclarationType.CLASS
+                    elif result.type == "enum_declaration":
+                        declaration_type = DeclarationType.ENUM
+                    elif result.type == "interface_declaration":
+                        declaration_type = DeclarationType.INTERFACE
+                    elif result.type == "annotation_declaration":
+                        declaration_type = DeclarationType.ANNOTATION
+                    else:
+                        declaration_type = DeclarationType.RECORD
+                    return JavaFileData(
+                        file_name=decl_name_str,
+                        package_path=self.get_buffer_package_path(
+                            buffer_path=file_path, debug=debug
+                        ),
+                        path=file_path,
+                        tree=file_tree,
+                        declaration_type=declaration_type,
+                        is_jpa_entity=is_jpa_entity,
+                    )
+
+    def get_all_java_files_data(self, debug: bool = False) -> List[JavaFileData]:
+        root_path = self.path_utils.get_spring_project_root_path()
+        files_found: List[JavaFileData] = []
         for p in root_path.rglob("*.java"):
             if "main" not in p.parts:
                 continue
-            buffer_tree = self.treesitter_utils.convert_buffer_to_tree(buffer=p)
-            query_result = self.treesitter_utils.query_match(
-                buffer_tree, decl_type_query_param
-            )
-            for result in query_result:
-                decl_name = result.child_by_field_name("name")
-                if decl_name and decl_name.text and result.text:
-                    decl_name_str = self.treesitter_utils.convert_bytes_to_string(
-                        decl_name.text
-                    )
-                    if decl_name_str == p.stem:
-                        result_tree = self.treesitter_utils.convert_buffer_to_tree(
-                            result.text
-                        )
-                        declaration_type: DeclarationType = DeclarationType.CLASS
-                        is_jpa_entity = (
-                            self.treesitter_utils.buffer_public_class_has_annotation(
-                                tree=result_tree, annotation_name="Entity", debug=debug
-                            )
-                        )
-                        if result.type == "class_declaration":
-                            declaration_type = DeclarationType.CLASS
-                        elif result.type == "enum_declaration":
-                            declaration_type = DeclarationType.ENUM
-                        elif result.type == "interface_declaration":
-                            declaration_type = DeclarationType.INTERFACE
-                        elif result.type == "annotation_declaration":
-                            declaration_type = DeclarationType.ANNOTATION
-                        else:
-                            declaration_type = DeclarationType.RECORD
-                        files_found.append(
-                            JavaFileData(
-                                file_name=decl_name_str,
-                                package_path=self.get_buffer_package_path(
-                                    buffer_path=p, debug=debug
-                                ),
-                                path=p,
-                                tree=buffer_tree,
-                                declaration_type=declaration_type,
-                                is_jpa_entity=is_jpa_entity,
-                            )
-                        )
+            file_data: Optional[JavaFileData] = self.get_java_file_data(p, debug)
+            if file_data:
+                files_found.append(file_data)
         if debug:
             self.logging.log(
                 [
                     f"Root path: {str(root_path)}",
-                    f"Declaration type query param: {decl_type_query_param}",
                     f"Files found:\n{[f.print() for f in files_found]}",
                 ],
                 LogLevel.DEBUG,
