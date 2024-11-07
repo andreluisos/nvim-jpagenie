@@ -147,3 +147,14 @@ class CommonUtils:
                 LogLevel.DEBUG,
             )
         return files_found
+
+    def generate_field_name(
+        self, field_type: str, plural: bool = False, debug: bool = False
+    ) -> str:
+        field_name = field_type
+        if plural:
+            field_name = self.pluralize_word(field_name)
+        field_name = field_name[0].lower() + field_name[1:]
+        if debug:
+            self.logging.log(f"Field name: {field_name}", LogLevel.DEBUG)
+        return field_name

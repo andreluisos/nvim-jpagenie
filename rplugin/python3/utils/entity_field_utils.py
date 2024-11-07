@@ -54,17 +54,6 @@ class EntityFieldUtils:
             self.logging.log(f"Insert byte: {insert_byte}", LogLevel.DEBUG)
         return insert_byte
 
-    def generate_field_name(
-        self, field_type: str, plural: bool = False, debug: bool = False
-    ) -> str:
-        field_name = field_type
-        if plural:
-            field_name = self.common_utils.pluralize_word(field_name)
-        field_name = field_name[0].lower() + field_name[1:]
-        if debug:
-            self.logging.log(f"Field name: {field_name}", LogLevel.DEBUG)
-        return field_name
-
     def merge_field_params(self, params: List[str], debug: bool = False) -> str:
         merged_params = ", ".join(params)
         if debug:
@@ -180,7 +169,7 @@ class EntityFieldUtils:
             column_params.append("unique = true")
         column_body = self.generate_field_column_line(column_params, debug)
         field_body = self.generate_field_body_line(
-            field_type, self.generate_field_name(field_name, debug), debug
+            field_type, self.common_utils.generate_field_name(field_name, debug), debug
         )
         template += "\n\t" + column_body + "\n\t" + field_body + "\n"
         if debug:
@@ -247,7 +236,7 @@ class EntityFieldUtils:
             template += f"\t@GeneratedValue(strategy = GenerationType.{id_generation.value.upper()})"
         column_body = self.generate_field_column_line(column_params, debug)
         field_body = self.generate_field_body_line(
-            field_type, self.generate_field_name(field_name, debug), debug
+            field_type, self.common_utils.generate_field_name(field_name, debug), debug
         )
         template += "\n\t" + column_body + "\n\t" + field_body + "\n"
         if debug:
@@ -294,7 +283,7 @@ class EntityFieldUtils:
             column_params.append("unique = true")
         column_body = self.generate_field_column_line(column_params, debug)
         field_body = self.generate_field_body_line(
-            field_type, self.generate_field_name(field_name, debug), debug
+            field_type, self.common_utils.generate_field_name(field_name, debug), debug
         )
         template += "\n\t" + column_body + "\n\t" + field_body + "\n"
         if debug:
