@@ -4,8 +4,6 @@ package.path = package.path .. ";" .. args[1] .. "/?.lua"
 
 local n = require("nui-components")
 
-local select_one = require("select_one")
-
 local select_many = require("select_many")
 
 local renderer = n.create_renderer({
@@ -148,7 +146,6 @@ local function render_confirm_button()
 				inverse_side_cascades = signal.inverse_side_cascades:get_value(),
 				inverse_side_other = signal.inverse_side_other:get_value(),
 			}
-			print(vim.inspect(result))
 			vim.call("ManyToManyCallback", result)
 			renderer:close()
 		end,
