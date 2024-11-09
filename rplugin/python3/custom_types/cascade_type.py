@@ -8,3 +8,10 @@ class CascadeType(Enum):
     REMOVE = "remove"
     REFRESH = "refresh"
     DETACH = "detach"
+
+    @classmethod
+    def from_value(cls, value: str) -> "CascadeType":
+        for member in cls:
+            if member.value == value:
+                return member
+        raise ValueError(f"No matching enum member for value '{value}'")
