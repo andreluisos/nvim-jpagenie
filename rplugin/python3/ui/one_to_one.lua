@@ -48,9 +48,33 @@ end
 local function render_field_type_component(_signal, options)
 	local data = {}
 	for _, v in ipairs(options) do
-		table.insert(data, n.node({ text = v.name, is_done = false, id = v.id }))
+		table.insert(data, n.node({ text = v.name, type = v.type, is_done = false, id = v.id }))
 	end
-	return select_one.render_component(6, "Inverse entity", data, "inverse_field_type", _signal)
+	return n.tree({
+		size = 6,
+		border_label = "Inverse Entity",
+		data = data,
+		on_select = function(selected_node, component)
+			local tree = component:get_tree()
+			for _, node in ipairs(data) do
+				node.is_done = false
+			end
+			selected_node.is_done = true
+			_signal.inverse_field_type = selected_node.type
+			tree:render()
+		end,
+		prepare_node = function(node, line, _)
+			if node.is_done then
+				line:append("◉", "String")
+			else
+				line:append("○", "Comment")
+			end
+			line:append(" ")
+			line:append(node.text)
+			return line
+		end,
+		hidden = _signal.parent_entity_hidden,
+	})
 end
 
 local function render_cascade_component(_signal, signal_key)

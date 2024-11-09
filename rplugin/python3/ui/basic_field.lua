@@ -85,7 +85,7 @@ local function render_field_package_type_component(_signal, options)
 		if v.id == "java.lang.String" then
 			is_done = true
 		end
-		table.insert(data, n.node({ text = v.name, is_done = is_done, id = v.id }))
+		table.insert(data, n.node({ text = v.name, type = v.type, is_done = is_done, id = v.id }))
 	end
 	return n.tree({
 		autofocus = true,
@@ -106,7 +106,7 @@ local function render_field_package_type_component(_signal, options)
 			end
 			selected_node.is_done = true
 			_signal.field_package_path = selected_node.id
-			_signal.field_type = selected_node.field_type
+			_signal.field_type = selected_node.type
 			for _, element in ipairs(has_field_length) do
 				if selected_node.id == element then
 					field_length_hidden = false

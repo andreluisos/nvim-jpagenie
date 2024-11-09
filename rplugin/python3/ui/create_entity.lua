@@ -129,7 +129,6 @@ local function render_confirm_button()
 				parent_entity_package_path = signal.parent_entity_package_path:get_value(),
 				parent_entity_path = signal.parent_entity_path:get_value(),
 			}
-			print(vim.inspect(result))
 			vim.call("CreateNewJpaEntityCallback", result)
 			renderer:close()
 		end,

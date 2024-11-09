@@ -1,11 +1,12 @@
 from pathlib import Path
-from typing import List, Optional, Tuple
+from typing import List, Optional
 from pynvim.api.nvim import Nvim
 
+from custom_types.entity_type import EntityType
+from custom_types.log_level import LogLevel
 from utils.treesitter_utils import TreesitterUtils
 from utils.common_utils import CommonUtils
 from utils.path_utils import PathUtils
-from utils.data_types import EntityType
 from utils.logging import Logging
 
 
@@ -23,57 +24,17 @@ class EntityCreationUtils:
         self.path_utils = path_utils
         self.logging = logging
         self.common_utils = common_utils
-        self.importings: List[str] = []
 
-    def fetch_entity_data(self, debug: bool = False):
-        parent_query = """
-        (
-        (class_declaration
-            (modifiers
-            (marker_annotation
-                name: (identifier) @annotation_name)
-            )
-            name: (identifier) @class_name)
-        (#match? @annotation_name "^(Entity|Table|MappedSuperclass)$")
-        )
-        (
-        (class_declaration
-            (modifiers
-            (annotation
-                name: (identifier) @annotation_name))
-            name: (identifier) @class_name)
-        (#match? @annotation_name "^(Entity|Table|MappedSuperclass)$")
-        )
-        """
-        root_path = Path(self.path_utils.get_spring_project_root_path(debug))
-        parent_entities_found: List[Tuple[str, str, Path]] = []
-        for p in root_path.rglob("*.java"):
-            buffer_node = self.treesitter_utils.get_node_from_path(p, debug)
-            parent_results = self.treesitter_utils.query_node(
-                buffer_node, parent_query, debug
-            )
-            if len(parent_results) >= 1:
-                entity_name = self.treesitter_utils.get_node_text(
-                    parent_results[len(parent_results) - 1][0], debug
-                )
-                package_path = self.path_utils.get_buffer_package_path(p, debug)
-                parent_entities_found.append((entity_name, package_path, p))
-        self.logging.log(
-            ["Found entities:\n"] + [str(r) for r in parent_entities_found],
-            "debug",
-        )
-        return parent_entities_found
-
-    def get_base_path(self, main_class_path: str, debug: bool = False) -> Path:
-        base_path = Path(main_class_path).parent
+    def get_base_path(self, main_class_path: Path, debug: bool = False) -> Path:
+        base_path = main_class_path.parent
         if debug:
-            self.logging.log(f"Base path: {str(base_path)}", "debug")
+            self.logging.log(f"Base path: {str(base_path)}", LogLevel.DEBUG)
         return base_path
 
     def get_relative_path(self, package_path: str, debug: bool = False) -> Path:
         relative_path = Path(package_path.replace(".", "/"))
         if debug:
-            self.logging.log(f"Relative path: {str(relative_path)}", "debug")
+            self.logging.log(f"Relative path: {str(relative_path)}", LogLevel.DEBUG)
         return relative_path
 
     def construct_file_path(
@@ -83,7 +44,7 @@ class EntityCreationUtils:
             index_to_replace = base_path.parts.index("main")
         except ValueError:
             error_msg = "Unable to parse root directory"
-            self.logging.log(error_msg, "debug")
+            self.logging.log(error_msg, LogLevel.ERROR)
             raise ValueError(error_msg)
         file_path = (
             Path(*base_path.parts[: index_to_replace + 2])
@@ -91,7 +52,7 @@ class EntityCreationUtils:
             / f"{file_name}.java"
         )
         if debug:
-            self.logging.log(f"File path: {str(file_path)}", "debug")
+            self.logging.log(f"File path: {str(file_path)}", LogLevel.DEBUG)
         return file_path
 
     def generate_new_entity_template(
@@ -103,27 +64,23 @@ class EntityCreationUtils:
         parent_entity_package_path: Optional[str],
         debug: bool = False,
     ) -> str:
-        self.importings.append("jakarta.persistence.Table")
-        snaked_entity_name = self.common_utils.generate_snaked_field_name(
-            entity_name, debug
-        )
+        imports_to_add: List[str] = ["jakarta.persistence.Table"]
+        snaked_entity_name = self.common_utils.convert_to_snake_case(entity_name, debug)
         if entity_name == "User":
             snaked_entity_name += "_"
         template = f"package {package_path};\n\n"
         if entity_type == "entity":
-            self.importings.append("jakarta.persistence.Entity")
+            imports_to_add.append("jakarta.persistence.Entity")
             template += "@Entity\n"
         elif entity_type == "embeddable":
-            self.importings.append("jakarta.persistence.Embeddable")
+            imports_to_add.append("jakarta.persistence.Embeddable")
             template += "@Embeddable\n"
         else:
-            self.importings.append("jakarta.persistence.MappedSuperclass")
+            imports_to_add.append("jakarta.persistence.MappedSuperclass")
             template += "@MappedSuperclass\n"
         template += f'@Table(name = "{snaked_entity_name}")\n'
         if parent_entity_type and parent_entity_package_path:
-            self.importings.append(
-                parent_entity_package_path + "." + parent_entity_type
-            )
+            imports_to_add.append(parent_entity_package_path + "." + parent_entity_type)
             template += f"public class {entity_name} extends {parent_entity_type} {{}}"
         else:
             template += f"public class {entity_name} {{}}"
@@ -133,8 +90,9 @@ class EntityCreationUtils:
                     f"Snaked entity name: {snaked_entity_name}",
                     f"Template:\n{template}",
                 ],
-                "debug",
+                LogLevel.DEBUG,
             )
+        self.treesitter_utils.add_to_importing_list(imports_to_add, debug)
         return template
 
     def create_new_entity(
@@ -146,7 +104,7 @@ class EntityCreationUtils:
         parent_entity_package_path: Optional[str],
         debug: bool = False,
     ):
-        main_class_path = self.path_utils.get_spring_main_class_path(debug)
+        main_class_path = self.path_utils.get_spring_main_class_path()
         base_path = self.get_base_path(main_class_path)
         relative_path = self.get_relative_path(package_path)
         final_path = self.construct_file_path(
@@ -154,9 +112,7 @@ class EntityCreationUtils:
         )
         if final_path.exists():
             error_msg = f"File {str(final_path)} already exists"
-            self.logging.log(error_msg, "error")
-        final_path.parent.mkdir(parents=True, exist_ok=True)
-        final_path.touch(exist_ok=True)
+            self.logging.log(error_msg, LogLevel.ERROR)
         template = self.generate_new_entity_template(
             package_path=package_path,
             entity_name=entity_name,
@@ -165,18 +121,24 @@ class EntityCreationUtils:
             parent_entity_package_path=parent_entity_package_path,
             debug=debug,
         )
-        buffer_bytes = self.treesitter_utils.get_bytes_from_path(final_path, debug)
-        buffer_bytes = self.treesitter_utils.insert_code_into_position(
-            template, 0, buffer_bytes, debug
-        )
-        buffer_bytes = self.common_utils.add_imports_to_buffer(
-            self.importings, buffer_bytes, debug
-        )
-        self.logging.log(f"Final buffer:\n{buffer_bytes.decode('utf-8')}", "debug")
+        buffer_tree = self.treesitter_utils.convert_bytes_to_tree(template.encode())
+        buffer_tree = self.treesitter_utils.add_imports_to_file_tree(buffer_tree, debug)
         self.treesitter_utils.update_buffer(
-            buffer_bytes=buffer_bytes,
+            tree=buffer_tree,
             buffer_path=final_path,
             save=False,
             format=True,
             organize_imports=True,
         )
+        if debug:
+            self.logging.log(
+                [
+                    f"Main class path: {str(main_class_path)}",
+                    f"Base path: {str(base_path)}",
+                    f"Relative path: {str(relative_path)}",
+                    f"Final path: {str(final_path)}",
+                    f"Template:\n{template}",
+                    f"Final file:\n{buffer_tree.root_node.__repr__()}",
+                ],
+                LogLevel.DEBUG,
+            )
