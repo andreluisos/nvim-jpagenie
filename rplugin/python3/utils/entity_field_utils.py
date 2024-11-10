@@ -84,12 +84,14 @@ class EntityFieldUtils:
         imports_to_add: List[str] = []
         snaked_field_name = self.common_utils.convert_to_snake_case(field_name, debug)
         column_params: List[str] = [f'name = "{snaked_field_name}"']
-        template = ""
+        time_zone_storage_body: Optional[str] = None
+        temporal_body: Optional[str] = None
+        lob_body: Optional[str] = None
         imports_to_add.append("jakarta.persistence.Column")
         if "." in field_package_path:
             imports_to_add.append(field_package_path + "." + field_type)
         if (
-            field_package_path
+            field_package_path + "." + field_type
             in [
                 "java.lang.String",
                 "java.net.URL",
@@ -105,7 +107,7 @@ class EntityFieldUtils:
         ):
             column_params.append(f"length = {field_length}")
         if (
-            field_package_path
+            field_package_path + "." + field_type
             in [
                 "java.time.OffsetDateTime",
                 "java.time.OffsetTime",
@@ -119,11 +121,11 @@ class EntityFieldUtils:
                     "org.hibernate.annotations.TimeZoneStorageType",
                 ]
             )
-            template += (
-                f"\n\t@TimeZoneStorage(TimeZoneStorageType.{field_time_zone_storage})"
+            time_zone_storage_body = (
+                f"@TimeZoneStorage(TimeZoneStorageType.{field_time_zone_storage.value})"
             )
         if (
-            field_package_path
+            field_package_path + "." + field_type
             in [
                 "java.util.Date",
                 "java.util.Calendar",
@@ -133,9 +135,9 @@ class EntityFieldUtils:
             imports_to_add.extend(
                 ["jakarta.persistence.Temporal", "jakarta.persistence.TemporalType"]
             )
-            template += f"\n\t@Temporal(TemporalType.{field_temporal})"
+            temporal_body = f"@Temporal(TemporalType.{field_temporal.value})"
         if (
-            field_package_path == "java.math.BigDecimal"
+            field_package_path + "." + field_type == "java.math.BigDecimal"
             and field_precision is not None
             and field_scale is not None
         ):
@@ -144,15 +146,22 @@ class EntityFieldUtils:
             )
         if large_object:
             imports_to_add.append("jakarta.persistence.Lob")
-            template += "\n\t@Lob"
+            lob_body = "@Lob"
         if mandatory:
-            column_params.append("nullable = true")
+            column_params.append("nullable = false")
         if unique:
             column_params.append("unique = true")
         column_body = self.generate_field_column_line(column_params, debug)
         field_body = self.generate_field_body_line(
             field_type, self.common_utils.generate_field_name(field_name, debug), debug
         )
+        template = ""
+        if lob_body:
+            template += "\n\t" + lob_body
+        if time_zone_storage_body:
+            template += "\n\t" + time_zone_storage_body
+        if temporal_body:
+            template += "\n\t" + temporal_body
         template += "\n\t" + column_body + "\n\t" + field_body + "\n"
         if debug:
             self.logging.log(
@@ -191,33 +200,50 @@ class EntityFieldUtils:
         ]
         snaked_field_name = self.common_utils.convert_to_snake_case(field_name, debug)
         column_params: List[str] = [f'name = "{snaked_field_name}"']
-        template = "\n\t@Id\n"
+        generated_value_params: List[str] = []
+        sequence_generator_params: List[str] = []
+        id_field_body = "@Id"
+        generated_value_body: Optional[str] = None
+        sequence_generator_body: Optional[str] = None
         if mandatory:
-            column_params.append("nullable = true")
-        if id_generation == "sequence":
-            generated_value_body = f"\t@GeneratedValue(strategy = GenerationType.{id_generation.value.upper()}"
+            column_params.append("nullable = false")
+        if id_generation != IdGeneration.NONE:
+            generated_value_params.append(
+                f"strategy = GenerationType.{id_generation.value.upper()}"
+            )
             if (
-                id_generation == "sequence"
-                and id_generation_type == "entity_exclusive_generation"
+                id_generation == IdGeneration.SEQUENCE
+                and id_generation_type == IdGenerationType.ENTITY_EXCLUSIVE_GENERATION
             ):
-                generated_value_body += f', generator = "{generator_name}"'
-                generated_value_body += ")"
-                sequence_generator_body = (
-                    f'\t@SequenceGenerator(name = "{generator_name}", '
-                    f'sequenceName = "{sequence_name}"'
+                imports_to_add.append("jakarta.persistence.SequenceGenerator")
+                generated_value_params.append(f'generator = "{generator_name}"')
+                sequence_generator_params.extend(
+                    [
+                        f'name = "{generator_name}"',
+                        f'sequenceName = "{sequence_name}"',
+                    ]
                 )
                 if initial_value != 1 and initial_value is not None:
-                    sequence_generator_body += f", initialValue = {initial_value}"
+                    sequence_generator_params.append(
+                        f", initialValue = {initial_value}"
+                    )
                 if allocation_size != 50 and allocation_size is not None:
-                    sequence_generator_body += f", allocationSize = {allocation_size}"
-                sequence_generator_body += ")\n"
-                template += generated_value_body + sequence_generator_body
-        if id_generation != "none":
-            template += f"\t@GeneratedValue(strategy = GenerationType.{id_generation.value.upper()})"
+                    sequence_generator_params.append(
+                        f", allocationSize = {allocation_size}"
+                    )
+                sequence_generator_body = f"@SequenceGenerator({self.merge_field_params(sequence_generator_params, debug)})"
+            generated_value_body = f"@GeneratedValue({self.merge_field_params(generated_value_params, debug)})"
         column_body = self.generate_field_column_line(column_params, debug)
         field_body = self.generate_field_body_line(
-            field_type, self.common_utils.generate_field_name(field_name, debug), debug
+            field_type,
+            self.common_utils.generate_field_name(field_name, False, debug),
+            debug,
         )
+        template = "\n\t" + id_field_body
+        if generated_value_body:
+            template += "\n\t" + generated_value_body
+        if sequence_generator_body:
+            template += "\n\t" + sequence_generator_body
         template += "\n\t" + column_body + "\n\t" + field_body + "\n"
         if debug:
             self.logging.log(
@@ -254,8 +280,8 @@ class EntityFieldUtils:
                 field_package_path + "." + field_type,
             ]
         )
-        template = f"\n\t@Enumerated({enum_type})"
-        if enum_type == "STRING" and field_length and field_length != 255:
+        enumerated_body = f"@Enumerated({enum_type})"
+        if enum_type == EnumType.STRING and field_length and field_length != 255:
             column_params.append(f"length = {field_length}")
         if mandatory:
             column_params.append("nullable = true")
@@ -263,9 +289,13 @@ class EntityFieldUtils:
             column_params.append("unique = true")
         column_body = self.generate_field_column_line(column_params, debug)
         field_body = self.generate_field_body_line(
-            field_type, self.common_utils.generate_field_name(field_name, debug), debug
+            field_type,
+            self.common_utils.generate_field_name(field_name, False, debug),
+            debug,
         )
-        template += "\n\t" + column_body + "\n\t" + field_body + "\n"
+        template = (
+            "\n\t" + enumerated_body + "\n\t" + column_body + "\n\t" + field_body + "\n"
+        )
         if debug:
             self.logging.log(
                 [

@@ -30,7 +30,7 @@ local signal = n.create_signal({
 	sequence_name_hidden = true,
 	initial_value_hidden = true,
 	allocation_size_hidden = true,
-	other = {},
+	other = { "mandatory", "mutable" },
 })
 
 local function render_main_title()
@@ -91,8 +91,8 @@ end
 
 local function render_other_component(_signal)
 	local data = {
-		n.node({ text = "Mandatory", is_done = false, id = "mandatory" }),
-		n.node({ text = "Mutable", is_done = false, id = "mutable" }),
+		n.node({ text = "Mandatory", is_done = true, id = "mandatory" }),
+		n.node({ text = "Mutable", is_done = true, id = "mutable" }),
 	}
 	return select_many.render_component(nil, "Other", data, _signal, "other")
 end
