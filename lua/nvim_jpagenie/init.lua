@@ -27,8 +27,9 @@ vim.fn.system({ pip_path, "install", "-r", requirements_path })
 -- Set Python host program
 vim.g.python3_host_prog = vim.fn.expand(venv_path .. "/bin/python")
 
--- Update remote plugins
-vim.cmd("silent! UpdateRemotePlugins")
+vim.schedule(function()
+	vim.cmd("silent! UpdateRemotePlugins")
+end)
 
 -- Keymaps
 vim.api.nvim_set_keymap("n", "<leader>cj", "", { noremap = true, silent = true, desc = "JPA" })
