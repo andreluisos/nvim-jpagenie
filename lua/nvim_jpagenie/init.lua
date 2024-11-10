@@ -31,6 +31,72 @@ vim.g.python3_host_prog = vim.fn.expand(venv_path .. "/bin/python")
 -- Update remote plugins
 vim.cmd("silent! UpdateRemotePlugins")
 
-M.setup = function(_) end
+-- Plugin dependencies
+M.setup = function(_)
+	return {
+		"grapp-dev/nui-components.nvim",
+		dependencies = {
+			"MunifTanjim/nui.nvim",
+		},
+	}
+end
+
+-- Keymaps
+vim.api.nvim_set_keymap("n", "<leader>cj", "", { noremap = true, silent = true, desc = "JPA" })
+vim.api.nvim_set_keymap(
+	"n",
+	"<leader>cje",
+	":CreateNewJPAEntity<CR>",
+	{ noremap = true, silent = true, desc = "Create new JPA Entity" }
+)
+vim.api.nvim_set_keymap(
+	"n",
+	"<leader>cjj",
+	":CreateJPARepository<CR>",
+	{ noremap = true, silent = true, desc = "Create JPA Repository for this Entity" }
+)
+vim.api.nvim_set_keymap("n", "<leader>cjf", "", { noremap = true, silent = true, desc = "Entity field creation" })
+vim.api.nvim_set_keymap(
+	"n",
+	"<leader>cjfi",
+	":CreateEntityField id<CR>",
+	{ noremap = true, silent = true, desc = "Create new Entity id field" }
+)
+vim.api.nvim_set_keymap(
+	"n",
+	"<leader>cjfb",
+	":CreateEntityField basic<CR>",
+	{ noremap = true, silent = true, desc = "Create new Entity basic field" }
+)
+vim.api.nvim_set_keymap(
+	"n",
+	"<leader>cjfe",
+	":CreateEntityField enum<CR>",
+	{ noremap = true, silent = true, desc = "Create Entity enum field" }
+)
+vim.api.nvim_set_keymap(
+	"n",
+	"<leader>cjr",
+	"",
+	{ noremap = true, silent = true, desc = "Entity relationship creation" }
+)
+vim.api.nvim_set_keymap(
+	"n",
+	"<leader>cjro",
+	":CreateEntityRelationship one-to-one<CR>",
+	{ noremap = true, silent = true, desc = "Create one-to-one relationship" }
+)
+vim.api.nvim_set_keymap(
+	"n",
+	"<leader>cjrn",
+	":CreateEntityRelationship many-to-one<CR>",
+	{ noremap = true, silent = true, desc = "Create many-to-one relationship" }
+)
+vim.api.nvim_set_keymap(
+	"n",
+	"<leader>cjrm",
+	":CreateEntityRelationship many-to-many<CR>",
+	{ noremap = true, silent = true, desc = "Create many-to-many relationship" }
+)
 
 return M
