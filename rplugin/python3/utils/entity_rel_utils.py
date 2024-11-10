@@ -3,6 +3,9 @@ from typing import List, Optional, Tuple
 
 from tree_sitter import Tree
 
+from custom_types.create_many_to_one_args import CreateManyToOneRelArgs
+from custom_types.create_one_to_one_args import CreateOneToOneRelArgs
+from custom_types.create_many_to_many_args import CreateManyToManyRelArgs
 from custom_types.log_level import LogLevel
 from custom_types.java_file_data import JavaFileData
 from custom_types.collection_type import CollectionType
@@ -729,33 +732,29 @@ class EntityRelationshipUtils:
         self,
         owning_side_file_data: JavaFileData,
         inverse_side_file_data: JavaFileData,
-        collection_type: CollectionType,
-        fetch_type: FetchType,
-        mapping_type: MappingType,
-        owning_side_cascades: List[CascadeType],
-        inverse_side_cascades: List[CascadeType],
-        inverse_side_other: List[Other],
-        owning_side_other: List[Other],
+        args: CreateManyToOneRelArgs,
         debug: bool = False,
     ):
         field_template = self.generate_many_to_one_template(
             inverse_side_file_data=inverse_side_file_data,
-            fetch_type=fetch_type,
+            fetch_type=args.fetch_type_enum,
             cascade_persist=True
-            if CascadeType.PERSIST in owning_side_cascades
+            if CascadeType.PERSIST in args.owning_side_cascades_enum
             else False,
-            cascade_merge=True if CascadeType.MERGE in owning_side_cascades else False,
+            cascade_merge=True
+            if CascadeType.MERGE in args.owning_side_cascades_enum
+            else False,
             cascade_remove=True
-            if CascadeType.REMOVE in owning_side_cascades
+            if CascadeType.REMOVE in args.owning_side_cascades_enum
             else False,
             cascade_refresh=True
-            if CascadeType.REFRESH in owning_side_cascades
+            if CascadeType.REFRESH in args.owning_side_cascades_enum
             else False,
             cascade_detach=True
-            if CascadeType.DETACH in owning_side_cascades
+            if CascadeType.DETACH in args.owning_side_cascades_enum
             else False,
-            mandatory=True if Other.MANDATORY in owning_side_other else False,
-            unique=True if Other.UNIQUE in owning_side_other else False,
+            mandatory=True if Other.MANDATORY in args.owning_side_other_enum else False,
+            unique=True if Other.UNIQUE in args.owning_side_other_enum else False,
             debug=debug,
         )
         self.update_buffer(
@@ -764,29 +763,29 @@ class EntityRelationshipUtils:
             field_template,
             debug,
         )
-        if mapping_type == MappingType.BIDIRECTIONAL_JOIN_COLUMN:
+        if args.mapping_type_enum == MappingType.BIDIRECTIONAL_JOIN_COLUMN:
             field_template = self.generate_one_to_many_template(
                 owning_side_file_data=owning_side_file_data,
                 inverse_side_file_data=inverse_side_file_data,
                 cascade_persist=True
-                if CascadeType.PERSIST in inverse_side_cascades
+                if CascadeType.PERSIST in args.inverse_side_cascades_enum
                 else False,
                 cascade_merge=True
-                if CascadeType.MERGE in inverse_side_cascades
+                if CascadeType.MERGE in args.inverse_side_cascades_enum
                 else False,
                 cascade_remove=True
-                if CascadeType.REMOVE in inverse_side_cascades
+                if CascadeType.REMOVE in args.inverse_side_cascades_enum
                 else False,
                 cascade_refresh=True
-                if CascadeType.REFRESH in inverse_side_cascades
+                if CascadeType.REFRESH in args.inverse_side_cascades_enum
                 else False,
                 cascade_detach=True
-                if CascadeType.DETACH in inverse_side_cascades
+                if CascadeType.DETACH in args.inverse_side_cascades_enum
                 else False,
                 orphan_removal=True
-                if Other.ORPHAN_REMOVAL in inverse_side_other
+                if Other.ORPHAN_REMOVAL in args.inverse_side_other_enum
                 else False,
-                collection_type=collection_type,
+                collection_type=args.collection_type_enum,
             )
             self.update_buffer(
                 inverse_side_file_data.tree,
@@ -799,32 +798,32 @@ class EntityRelationshipUtils:
         self,
         owning_side_file_data: JavaFileData,
         inverse_side_file_data: JavaFileData,
-        mapping_type: MappingType,
-        owning_side_cascades: List[CascadeType],
-        inverse_side_cascades: List[CascadeType],
-        inverse_side_other: List[Other],
-        owning_side_other: List[Other],
+        args: CreateOneToOneRelArgs,
         debug: bool = False,
     ):
         field_template = self.generate_one_to_one_field_template(
             inverse_side_file_data=inverse_side_file_data,
             owning_side_file_data=None,
             cascade_persist=True
-            if CascadeType.PERSIST in owning_side_cascades
+            if CascadeType.PERSIST in args.owning_side_cascades_enum
             else False,
-            cascade_merge=True if CascadeType.MERGE in owning_side_cascades else False,
+            cascade_merge=True
+            if CascadeType.MERGE in args.owning_side_cascades_enum
+            else False,
             cascade_remove=True
-            if CascadeType.REMOVE in owning_side_cascades
+            if CascadeType.REMOVE in args.owning_side_cascades_enum
             else False,
             cascade_refresh=True
-            if CascadeType.REFRESH in owning_side_cascades
+            if CascadeType.REFRESH in args.owning_side_cascades_enum
             else False,
             cascade_detach=True
-            if CascadeType.DETACH in owning_side_cascades
+            if CascadeType.DETACH in args.owning_side_cascades_enum
             else False,
-            mandatory=True if Other.MANDATORY in owning_side_other else False,
-            unique=True if Other.UNIQUE in owning_side_other else False,
-            orphan_removal=True if Other.ORPHAN_REMOVAL in owning_side_other else False,
+            mandatory=True if Other.MANDATORY in args.owning_side_other_enum else False,
+            unique=True if Other.UNIQUE in args.owning_side_other_enum else False,
+            orphan_removal=True
+            if Other.ORPHAN_REMOVAL in args.owning_side_other_enum
+            else False,
             debug=debug,
         )
         self.update_buffer(
@@ -833,29 +832,31 @@ class EntityRelationshipUtils:
             field_template,
             debug,
         )
-        if mapping_type != MappingType.UNIDIRECTIONAL_JOIN_COLUMN:
+        if args.mapping_type_enum != MappingType.UNIDIRECTIONAL_JOIN_COLUMN:
             field_template = self.generate_one_to_one_field_template(
                 inverse_side_file_data=inverse_side_file_data,
                 owning_side_file_data=owning_side_file_data,
                 cascade_persist=True
-                if CascadeType.PERSIST in inverse_side_cascades
+                if CascadeType.PERSIST in args.inverse_side_cascades_enum
                 else False,
                 cascade_merge=True
-                if CascadeType.MERGE in inverse_side_cascades
+                if CascadeType.MERGE in args.inverse_side_cascades_enum
                 else False,
                 cascade_remove=True
-                if CascadeType.REMOVE in inverse_side_cascades
+                if CascadeType.REMOVE in args.inverse_side_cascades_enum
                 else False,
                 cascade_refresh=True
-                if CascadeType.REFRESH in inverse_side_cascades
+                if CascadeType.REFRESH in args.inverse_side_cascades_enum
                 else False,
                 cascade_detach=True
-                if CascadeType.DETACH in inverse_side_cascades
+                if CascadeType.DETACH in args.inverse_side_cascades_enum
                 else False,
-                mandatory=True if Other.MANDATORY in inverse_side_other else False,
-                unique=True if Other.UNIQUE in owning_side_other else False,
+                mandatory=True
+                if Other.MANDATORY in args.inverse_side_other_enum
+                else False,
+                unique=True if Other.UNIQUE in args.inverse_side_other_enum else False,
                 orphan_removal=True
-                if Other.ORPHAN_REMOVAL in inverse_side_other
+                if Other.ORPHAN_REMOVAL in args.inverse_side_other_enum
                 else False,
                 debug=debug,
             )
@@ -870,24 +871,23 @@ class EntityRelationshipUtils:
         self,
         owning_side_file_data: JavaFileData,
         inverse_side_file_data: JavaFileData,
-        mapping_type: MappingType,
-        owning_side_cascades: List[CascadeType],
-        inverse_side_cascades: List[CascadeType],
-        inverse_side_other: List[Other],
+        args: CreateManyToManyRelArgs,
         debug: bool = False,
     ):
         field_template = self.generate_many_to_many_field_template(
             owning_side_file_data=owning_side_file_data,
             inverse_side_file_data=inverse_side_file_data,
             cascade_persist=True
-            if CascadeType.PERSIST in owning_side_cascades
+            if CascadeType.PERSIST in args.owning_side_cascades_enum
             else False,
-            cascade_merge=True if CascadeType.MERGE in owning_side_cascades else False,
+            cascade_merge=True
+            if CascadeType.MERGE in args.owning_side_cascades_enum
+            else False,
             cascade_refresh=True
-            if CascadeType.REFRESH in owning_side_cascades
+            if CascadeType.REFRESH in args.owning_side_cascades_enum
             else False,
             cascade_detach=True
-            if CascadeType.DETACH in owning_side_cascades
+            if CascadeType.DETACH in args.owning_side_cascades_enum
             else False,
             equals_hashcode=False,
             owning_side=True,
@@ -899,24 +899,24 @@ class EntityRelationshipUtils:
             field_template,
             debug,
         )
-        if mapping_type != MappingType.UNIDIRECTIONAL_JOIN_COLUMN:
+        if args.mapping_type_enum != MappingType.UNIDIRECTIONAL_JOIN_COLUMN:
             field_template = self.generate_many_to_many_field_template(
                 owning_side_file_data=owning_side_file_data,
                 inverse_side_file_data=inverse_side_file_data,
                 cascade_persist=True
-                if CascadeType.PERSIST in inverse_side_cascades
+                if CascadeType.PERSIST in args.inverse_side_cascades_enum
                 else False,
                 cascade_merge=True
-                if CascadeType.MERGE in inverse_side_cascades
+                if CascadeType.MERGE in args.inverse_side_cascades_enum
                 else False,
                 cascade_refresh=True
-                if CascadeType.REFRESH in inverse_side_cascades
+                if CascadeType.REFRESH in args.inverse_side_cascades_enum
                 else False,
                 cascade_detach=True
-                if CascadeType.DETACH in inverse_side_cascades
+                if CascadeType.DETACH in args.inverse_side_cascades_enum
                 else False,
                 equals_hashcode=True
-                if Other.EQUALS_HASHCODE in inverse_side_other
+                if Other.EQUALS_HASHCODE in args.inverse_side_other_enum
                 else False,
                 owning_side=False,
                 debug=debug,

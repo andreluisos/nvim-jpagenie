@@ -1,18 +1,16 @@
 from pathlib import Path
-from typing import List, Literal, Optional
+from typing import Dict, List, Literal, Optional
 
 from pynvim import plugin, command, function
 from pynvim.api import Nvim
 from tree_sitter import Tree
 
 from base import Base
-from custom_types.other import Other
-from custom_types.cascade_type import CascadeType
-from custom_types.collection_type import CollectionType
-from custom_types.fetch_type import FetchType
-from custom_types.mapping_type import MappingType
 from custom_types.java_file_data import JavaFileData
 from custom_types.log_level import LogLevel
+from custom_types.create_many_to_one_args import CreateManyToOneRelArgs
+from custom_types.create_one_to_one_args import CreateOneToOneRelArgs
+from custom_types.create_many_to_many_args import CreateManyToManyRelArgs
 
 
 @plugin
@@ -27,6 +25,7 @@ class EntityRelationshipCommands(Base):
 
     def process_command_args(self, args) -> None:
         self.logging.reset_log_file()
+        self.logging.log(args, LogLevel.DEBUG)
         if len(args) < 1 or len(args) > 2:
             error_msg = "At least one and max 2 arguments allowed"
             self.logging.log(error_msg, LogLevel.ERROR)
@@ -96,7 +95,10 @@ class EntityRelationshipCommands(Base):
         )
 
     @function("ManyToOneCallback")
-    def many_to_one_callback(self, args):
+    def many_to_one_callback(self, args: List[Dict]):
+        converted_args = CreateManyToOneRelArgs(**args[0])
+        if self.debug:
+            self.logging.log(f"Converted args: {converted_args}", LogLevel.DEBUG)
         self.inverse_side_file_data = self.get_inverse_side_file_data(
             args[0]["inverse_field_type"]
         )
@@ -104,26 +106,15 @@ class EntityRelationshipCommands(Base):
             self.entity_relationship_utils.create_many_to_one_relationship_field(
                 owning_side_file_data=self.owning_side_file_data,
                 inverse_side_file_data=self.inverse_side_file_data,
-                collection_type=CollectionType.from_value(args[0]["collection_type"]),
-                fetch_type=FetchType.from_value(args[0]["fetch_type"]),
-                mapping_type=MappingType.from_value(args[0]["mapping_type"]),
-                owning_side_cascades=[
-                    CascadeType.from_value(c) for c in args[0]["owning_side_cascades"]
-                ],
-                inverse_side_cascades=[
-                    CascadeType.from_value(c) for c in args[0]["inverse_side_cascades"]
-                ],
-                inverse_side_other=[
-                    Other.from_value(c) for c in args[0]["inverse_side_other"]
-                ],
-                owning_side_other=[
-                    Other.from_value(c) for c in args[0]["owning_side_other"]
-                ],
+                args=converted_args,
                 debug=self.debug,
             )
 
     @function("OneToOneCallback")
     def one_to_one_callback(self, args):
+        converted_args = CreateOneToOneRelArgs(**args[0])
+        if self.debug:
+            self.logging.log(f"Converted args: {converted_args}", LogLevel.DEBUG)
         self.inverse_side_file_data = self.get_inverse_side_file_data(
             args[0]["inverse_field_type"]
         )
@@ -131,24 +122,15 @@ class EntityRelationshipCommands(Base):
             self.entity_relationship_utils.create_one_to_one_relationship_field(
                 owning_side_file_data=self.owning_side_file_data,
                 inverse_side_file_data=self.inverse_side_file_data,
-                mapping_type=MappingType.from_value(args[0]["mapping_type"]),
-                owning_side_cascades=[
-                    CascadeType.from_value(c) for c in args[0]["owning_side_cascades"]
-                ],
-                inverse_side_cascades=[
-                    CascadeType.from_value(c) for c in args[0]["inverse_side_cascades"]
-                ],
-                inverse_side_other=[
-                    Other.from_value(c) for c in args[0]["inverse_side_other"]
-                ],
-                owning_side_other=[
-                    Other.from_value(c) for c in args[0]["owning_side_other"]
-                ],
+                args=converted_args,
                 debug=self.debug,
             )
 
     @function("ManyToManyCallback")
-    def many_to_many_callback(self, args):
+    def many_to_many_callback(self, args: List[Dict]):
+        converted_args = CreateManyToManyRelArgs(**args[0])
+        if self.debug:
+            self.logging.log(f"Converted args: {converted_args}", LogLevel.DEBUG)
         self.inverse_side_file_data = self.get_inverse_side_file_data(
             args[0]["inverse_field_type"]
         )
@@ -156,15 +138,6 @@ class EntityRelationshipCommands(Base):
             self.entity_relationship_utils.create_many_to_many_relationship_field(
                 owning_side_file_data=self.owning_side_file_data,
                 inverse_side_file_data=self.inverse_side_file_data,
-                mapping_type=MappingType.from_value(args[0]["mapping_type"]),
-                owning_side_cascades=[
-                    CascadeType.from_value(c) for c in args[0]["owning_side_cascades"]
-                ],
-                inverse_side_cascades=[
-                    CascadeType.from_value(c) for c in args[0]["inverse_side_cascades"]
-                ],
-                inverse_side_other=[
-                    Other.from_value(c) for c in args[0]["inverse_side_other"]
-                ],
+                args=converted_args,
                 debug=self.debug,
             )
