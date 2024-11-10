@@ -22,6 +22,8 @@ end
 -- Install requirements if venv exists but requirements are not installed
 local pip_path = venv_path .. "/bin/pip"
 local requirements_path = plugin_root .. "requirements.txt"
+
+-- TODO: check before installing?
 vim.fn.system({ pip_path, "install", "-r", requirements_path })
 
 -- Set Python host program
