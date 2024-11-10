@@ -117,7 +117,7 @@ class EntityFieldCommands(Base):
     def crease_basic_entity_field_callback(self, args: List[Dict]):
         converted_args = CreateBasicEntityFieldArgs(**args[0])
         if self.debug:
-            self.logging.log(converted_args.field_name, LogLevel.DEBUG)
+            self.logging.log(f"Converted args: {converted_args}", LogLevel.DEBUG)
         if self.buffer_file_data:
             self.entity_field_utils.create_basic_entity_field(
                 buffer_file_data=self.buffer_file_data,
@@ -129,7 +129,7 @@ class EntityFieldCommands(Base):
     def crease_enum_entity_field_callback(self, args):
         converted_args = CreateEnumEntityFieldArgs(**args[0])
         if self.debug:
-            self.logging.log(converted_args.field_name, LogLevel.DEBUG)
+            self.logging.log(f"Converted args: {converted_args}", LogLevel.DEBUG)
         if self.buffer_file_data:
             self.entity_field_utils.create_enum_entity_field(
                 buffer_file_data=self.buffer_file_data,
@@ -141,7 +141,7 @@ class EntityFieldCommands(Base):
     def crease_id_entity_field_callback(self, args: List[Dict]):
         converted_args = CreateIdEntityFieldArgs(**args[0])
         if self.debug:
-            self.logging.log(converted_args.field_name, LogLevel.DEBUG)
+            self.logging.log(f"Converted args: {converted_args}", LogLevel.DEBUG)
         if self.buffer_file_data:
             self.entity_field_utils.create_id_entity_field(
                 buffer_file_data=self.buffer_file_data,
