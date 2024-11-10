@@ -22,14 +22,13 @@ end
 -- Install requirements if venv exists but requirements are not installed
 local pip_path = venv_path .. "/bin/pip"
 local requirements_path = plugin_root .. "requirements.txt"
--- TODO: check if dep is already installed before executing this?
 vim.fn.system({ pip_path, "install", "-r", requirements_path })
 
 -- Set Python host program
 vim.g.python3_host_prog = vim.fn.expand(venv_path .. "/bin/python")
 
 -- Update remote plugins
-vim.cmd("UpdateRemotePlugins")
+vim.cmd("silent! UpdateRemotePlugins")
 
 -- Keymaps
 vim.api.nvim_set_keymap("n", "<leader>cj", "", { noremap = true, silent = true, desc = "JPA" })
@@ -88,5 +87,7 @@ vim.api.nvim_set_keymap(
 	":CreateEntityRelationship many-to-many<CR>",
 	{ noremap = true, silent = true, desc = "Create many-to-many relationship" }
 )
+
+M.setup = function(_) end
 
 return M
