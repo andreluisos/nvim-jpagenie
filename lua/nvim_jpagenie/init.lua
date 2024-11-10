@@ -29,17 +29,7 @@ vim.fn.system({ pip_path, "install", "-r", requirements_path })
 vim.g.python3_host_prog = vim.fn.expand(venv_path .. "/bin/python")
 
 -- Update remote plugins
-vim.cmd("silent! UpdateRemotePlugins")
-
--- Plugin dependencies
-M.setup = function(_)
-	return {
-		"grapp-dev/nui-components.nvim",
-		dependencies = {
-			"MunifTanjim/nui.nvim",
-		},
-	}
-end
+vim.cmd("UpdateRemotePlugins")
 
 -- Keymaps
 vim.api.nvim_set_keymap("n", "<leader>cj", "", { noremap = true, silent = true, desc = "JPA" })
