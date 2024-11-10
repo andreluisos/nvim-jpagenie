@@ -236,10 +236,8 @@ class JpaRepositoryUtils:
             self.treesitter_utils.update_buffer(
                 tree=jpa_repo_tree,
                 buffer_path=jpa_repo_path,
-                save=False,
-                format=True,
-                organize_imports=True,
-                debug=True,
+                save=True,
+                debug=debug,
             )
             if debug:
                 self.logging.log(

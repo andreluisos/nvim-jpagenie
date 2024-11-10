@@ -713,9 +713,7 @@ class EntityRelationshipUtils:
             template, insert_byte, updated_buffer_tree
         )
         self.treesitter_utils.update_buffer(
-            tree=updated_buffer_tree,
-            buffer_path=buffer_path,
-            save=True,
+            tree=updated_buffer_tree, buffer_path=buffer_path, save=True, debug=debug
         )
         if debug:
             self.logging.log(

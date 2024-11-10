@@ -124,11 +124,7 @@ class EntityCreationUtils:
         buffer_tree = self.treesitter_utils.convert_bytes_to_tree(template.encode())
         buffer_tree = self.treesitter_utils.add_imports_to_file_tree(buffer_tree, debug)
         self.treesitter_utils.update_buffer(
-            tree=buffer_tree,
-            buffer_path=final_path,
-            save=False,
-            format=True,
-            organize_imports=True,
+            tree=buffer_tree, buffer_path=final_path, save=True, debug=debug
         )
         if debug:
             self.logging.log(
