@@ -135,7 +135,7 @@ local function render_owning_other_component(_signal)
 		n.node({ text = "Unique", is_done = false, id = "unique" }),
 		n.node({ text = "Orphan removal", is_done = false, id = "orphan_removal" }),
 	}
-	return select_many.render_component(nil, "Other", data, _signal, "")
+	return select_many.render_component(nil, "Other", data, _signal, "owning_side_other")
 end
 
 local function render_inverse_other_component(_signal)
@@ -143,7 +143,7 @@ local function render_inverse_other_component(_signal)
 		n.node({ text = "Mandatory", is_done = false, id = "mandatory" }),
 		n.node({ text = "Orphan removal", is_done = false, id = "orphan_removal" }),
 	}
-	return select_many.render_component(nil, "Other", data, _signal, "selected_other")
+	return select_many.render_component(nil, "Other", data, _signal, "inverse_side_other")
 end
 
 local function render_confirm_button()

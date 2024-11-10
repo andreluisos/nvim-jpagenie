@@ -84,7 +84,7 @@ class EntityRelationshipUtils:
         optional: Optional[bool] = None,
         unique: Optional[bool] = None,
         orphan_removal: Optional[bool] = None,
-        fetch: Optional[str] = None,
+        fetch_type: Optional[FetchType] = None,
         name: Optional[str] = None,
         mapped_by: Optional[str] = None,
         debug: bool = False,
@@ -103,8 +103,8 @@ class EntityRelationshipUtils:
             params.append(f"unique = {str(unique).lower()}")
         if orphan_removal is not None:
             params.append(f"orphanRemoval = {str(orphan_removal).lower()}")
-        if fetch is not None:
-            params.append(f"fetch = FetchType.{fetch.upper()}")
+        if fetch_type is not None:
+            params.append(f"fetch = FetchType.{fetch_type.value.upper()}")
             imports_to_add.append("jakarta.persistence.FetchType")
         joined_params = ", ".join(params)
         if debug:
@@ -269,7 +269,7 @@ class EntityRelationshipUtils:
         cascade_remove: bool,
         cascade_refresh: bool,
         cascade_detach: bool,
-        optional: bool,
+        mandatory: bool,
         debug: bool = False,
     ):
         imports_to_add: List[str] = ["jakarta.persistence.ManyToOne"]
@@ -284,8 +284,8 @@ class EntityRelationshipUtils:
             debug,
         )
         extra_params: str = self.process_extra_params(
-            fetch=fetch_type.value if fetch_type != FetchType.NONE else None,
-            optional=optional,
+            fetch_type=fetch_type if fetch_type != FetchType.NONE else None,
+            optional=not mandatory,
             debug=debug,
         )
         params.append(extra_params)
@@ -354,7 +354,7 @@ class EntityRelationshipUtils:
         cascade_refresh: bool,
         cascade_detach: bool,
         orphan_removal: bool,
-        optional: bool,
+        mandatory: bool,
         inverse_field_type: Optional[str],
         debug: bool = False,
     ):
@@ -375,7 +375,7 @@ class EntityRelationshipUtils:
                 if inverse_field_type is not None
                 else None
             ),
-            optional=optional,
+            optional=not mandatory,
             orphan_removal=orphan_removal,
             debug=debug,
         )
@@ -433,7 +433,7 @@ class EntityRelationshipUtils:
     def generate_join_column_body(
         self,
         inverse_side_field_type: str,
-        nullable: bool,
+        mandatory: bool,
         unique: bool,
         debug: bool = False,
     ) -> str:
@@ -446,7 +446,7 @@ class EntityRelationshipUtils:
             + "_id"
         )
         extra_params = self.process_extra_params(
-            name=snaked_field_name, nullable=nullable, unique=unique, debug=debug
+            name=snaked_field_name, nullable=not mandatory, unique=unique, debug=debug
         )
         body += "(" + extra_params + ")"
         if debug:
@@ -464,26 +464,28 @@ class EntityRelationshipUtils:
         self,
         field_type: str,
         is_collection: bool,
-        collection_type: Optional[str],
+        collection_type: Optional[CollectionType],
         debug: bool = False,
     ) -> str:
         imports_to_add: List[str] = []
         collection_name: str = ""
         if is_collection and collection_type:
-            collection_name = collection_type.title()
+            collection_name = collection_type.value.title()
         field_name = self.common_utils.generate_field_name(
             field_type, True if is_collection else False, debug
         )
-        if collection_type == "set":
-            imports_to_add.extend(["java.util.Set", "java.util.HashSet"])
-        if collection_type == "List":
+        initialization = "ArrayList<>()"
+        if collection_type == CollectionType.SET:
+            imports_to_add.extend(["java.util.Set", "java.util.LinkedHashSet"])
+            initialization = "LinkedHashSet<>()"
+        if collection_type == CollectionType.LIST:
             imports_to_add.extend(["java.util.List", "java.util.ArrayList"])
-        if collection_type == "Collection":
+        if collection_type == CollectionType.COLLECTION:
             imports_to_add.extend(["java.util.Collection", "java.util.ArrayList"])
         body = (
             f"private {collection_name}"
             f"{'<' if is_collection else ''}{field_type}{'>' if is_collection else ''} "
-            f"{field_name};"
+            f"{field_name}{f' = new {initialization}' if is_collection else ''};"
         )
         if debug:
             self.logging.log(
@@ -523,7 +525,7 @@ class EntityRelationshipUtils:
             debug,
         )
         field_body = self.generate_field_body(
-            owning_side_file_data.file_name, True, collection_type.value, debug
+            owning_side_file_data.file_name, True, collection_type, debug
         )
         body = "\n\t" + one_to_many_body + "\n\t" + field_body + "\n"
         if debug:
@@ -603,7 +605,7 @@ class EntityRelationshipUtils:
             cascade_refresh=cascade_refresh,
             cascade_detach=cascade_detach,
             orphan_removal=orphan_removal,
-            optional=mandatory,
+            mandatory=mandatory,
             inverse_field_type=(
                 inverse_side_file_data.file_name
                 if owning_side_file_data is not None
@@ -661,7 +663,7 @@ class EntityRelationshipUtils:
             cascade_merge,
             cascade_refresh,
             cascade_detach,
-            inverse_side_file_data.file_name if owning_side else None,
+            inverse_side_file_data.file_name if not owning_side else None,
             debug,
         )
         join_table_body: str = ""
@@ -671,11 +673,11 @@ class EntityRelationshipUtils:
                 owning_side_file_data.file_name, inverse_side_file_data.file_name, debug
             )
             field_body = self.generate_field_body(
-                inverse_side_file_data.file_name, True, "set"
+                inverse_side_file_data.file_name, True, CollectionType.SET
             )
         else:
             field_body = self.generate_field_body(
-                owning_side_file_data.file_name, True, "set", debug
+                owning_side_file_data.file_name, True, CollectionType.SET, debug
             )
             imports_to_add.append(
                 owning_side_file_data.package_path
