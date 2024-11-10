@@ -1,19 +1,26 @@
-from typing import Optional
+from typing import Dict, List
 from pynvim import plugin, command, function
 from pynvim.api import Nvim
 
 from base import Base
-from custom_types.entity_type import EntityType
+from custom_types.create_entity_args import CreateEntityArgs
+from custom_types.log_level import LogLevel
 
 
 @plugin
 class EntityCreationCommands(Base):
     def __init__(self, nvim: Nvim) -> None:
         super().__init__(nvim)
+        self.debug: bool = False
 
-    @command("CreateNewJPAEntity")
-    def create_new_jpa_entity(self) -> None:
+    @command("CreateNewJPAEntity", nargs="*")
+    def create_new_jpa_entity(self, args: List[str]) -> None:
         self.logging.reset_log_file()
+        if len(args) > 1:
+            error_msg = "Only one arg is allowed"
+            self.logging.log(error_msg, LogLevel.ERROR)
+            raise ValueError(error_msg)
+        self.debug = True if "debug" in args else False
         found_entities = [
             e
             for e in self.common_utils.get_all_java_files_data(True)
@@ -39,23 +46,11 @@ class EntityCreationCommands(Base):
         )
 
     @function("CreateNewJpaEntityCallback")
-    def many_to_one_callback(self, args):
-        package_path: str = str(args[0]["package_path"])
-        entity_name: str = str(args[0]["entity_name"])
-        entity_type: EntityType = args[0]["entity_type"]
-        parent_entity_type: Optional[str] = (
-            args[0]["parent_entity_type"] if "parent_entity_type" in args[0] else None
-        )
-        parent_entity_package_path: Optional[str] = (
-            args[0]["parent_entity_package_path"]
-            if "parent_entity_package_path" in args[0]
-            else None
-        )
+    def many_to_one_callback(self, args: List[Dict]):
+        converted_args = CreateEntityArgs(**args[0])
+        if self.debug:
+            self.logging.log(f"Converted args: {converted_args}", LogLevel.DEBUG)
         self.entity_creation_utils.create_new_entity(
-            package_path=package_path,
-            entity_name=entity_name,
-            entity_type=entity_type,
-            parent_entity_type=parent_entity_type,
-            parent_entity_package_path=parent_entity_package_path,
-            debug=True,
+            args=converted_args,
+            debug=self.debug,
         )

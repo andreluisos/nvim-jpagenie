@@ -4,6 +4,7 @@ from pynvim.api.nvim import Nvim
 
 from custom_types.entity_type import EntityType
 from custom_types.log_level import LogLevel
+from custom_types.create_entity_args import CreateEntityArgs
 from utils.treesitter_utils import TreesitterUtils
 from utils.common_utils import CommonUtils
 from utils.path_utils import PathUtils
@@ -69,10 +70,10 @@ class EntityCreationUtils:
         if entity_name == "User":
             snaked_entity_name += "_"
         template = f"package {package_path};\n\n"
-        if entity_type == "entity":
+        if entity_type == EntityType.ENTITY:
             imports_to_add.append("jakarta.persistence.Entity")
             template += "@Entity\n"
-        elif entity_type == "embeddable":
+        elif entity_type == EntityType.EMBEDDABLE:
             imports_to_add.append("jakarta.persistence.Embeddable")
             template += "@Embeddable\n"
         else:
@@ -97,28 +98,24 @@ class EntityCreationUtils:
 
     def create_new_entity(
         self,
-        package_path: str,
-        entity_name: str,
-        entity_type: EntityType,
-        parent_entity_type: Optional[str],
-        parent_entity_package_path: Optional[str],
+        args: CreateEntityArgs,
         debug: bool = False,
     ):
         main_class_path = self.path_utils.get_spring_main_class_path()
         base_path = self.get_base_path(main_class_path)
-        relative_path = self.get_relative_path(package_path)
+        relative_path = self.get_relative_path(args.package_path)
         final_path = self.construct_file_path(
-            base_path=base_path, relative_path=relative_path, file_name=entity_name
+            base_path=base_path, relative_path=relative_path, file_name=args.entity_name
         )
         if final_path.exists():
             error_msg = f"File {str(final_path)} already exists"
             self.logging.log(error_msg, LogLevel.ERROR)
         template = self.generate_new_entity_template(
-            package_path=package_path,
-            entity_name=entity_name,
-            entity_type=entity_type,
-            parent_entity_type=parent_entity_type,
-            parent_entity_package_path=parent_entity_package_path,
+            package_path=args.package_path,
+            entity_name=args.entity_name,
+            entity_type=args.entity_type_enum,
+            parent_entity_type=args.parent_entity_type,
+            parent_entity_package_path=args.parent_entity_package_path,
             debug=debug,
         )
         buffer_tree = self.treesitter_utils.convert_bytes_to_tree(template.encode())

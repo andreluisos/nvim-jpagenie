@@ -13,7 +13,7 @@ local signal = n.create_signal({
 	entity_name = "NewEntity",
 	entity_type = "entity",
 	package_path = args[3],
-	parent_entity_type = nil,
+	parent_entity_type = "entity",
 	parent_entity_package_path = nil,
 	parent_entity_path = nil,
 	parent_entity_hidden = false,
@@ -80,6 +80,7 @@ local function render_entity_type_component(_signal, _data)
 				node.is_done = false
 			end
 			selected_node.is_done = true
+			_signal.entity_type = selected_node.id
 			if selected_node.id == "embeddable" then
 				_signal.parent_entity_hidden = true
 			else
@@ -127,7 +128,6 @@ local function render_confirm_button()
 				package_path = signal.package_path:get_value(),
 				parent_entity_type = signal.parent_entity_type:get_value(),
 				parent_entity_package_path = signal.parent_entity_package_path:get_value(),
-				parent_entity_path = signal.parent_entity_path:get_value(),
 			}
 			vim.call("CreateNewJpaEntityCallback", result)
 			renderer:close()
