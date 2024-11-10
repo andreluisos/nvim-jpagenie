@@ -294,7 +294,7 @@ class EntityFieldUtils:
         self.treesitter_utils.update_buffer(
             tree=updated_buffer_tree,
             buffer_path=buffer_path,
-            save=False,
+            save=True,
         )
         if debug:
             self.logging.log(
