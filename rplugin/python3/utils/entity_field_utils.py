@@ -10,6 +10,7 @@ from custom_types.field_temporal import FieldTemporal
 from custom_types.id_generation import IdGeneration
 from custom_types.id_generation_type import IdGenerationType
 from custom_types.log_level import LogLevel
+from custom_types.java_file_data import JavaFileData
 from utils.treesitter_utils import TreesitterUtils
 from utils.common_utils import CommonUtils
 from utils.logging import Logging
@@ -81,7 +82,7 @@ class EntityFieldUtils:
         template = ""
         imports_to_add.append("jakarta.persistence.Column")
         if "." in field_package_path:
-            imports_to_add.append(field_package_path)
+            imports_to_add.append(field_package_path + "." + field_type)
         if (
             field_package_path
             in [
@@ -114,7 +115,7 @@ class EntityFieldUtils:
                 ]
             )
             template += (
-                f"@TimeZoneStorage(TimeZoneStorageType.{field_time_zone_storage})\n"
+                f"\n\t@TimeZoneStorage(TimeZoneStorageType.{field_time_zone_storage})"
             )
         if (
             field_package_path
@@ -127,7 +128,7 @@ class EntityFieldUtils:
             imports_to_add.extend(
                 ["jakarta.persistence.Temporal", "jakarta.persistence.TemporalType"]
             )
-            template += f"@Temporal(TemporalType.{field_temporal})\n"
+            template += f"\n\t@Temporal(TemporalType.{field_temporal})"
         if (
             field_package_path == "java.math.BigDecimal"
             and field_precision is not None
@@ -138,7 +139,7 @@ class EntityFieldUtils:
             )
         if large_object:
             imports_to_add.append("jakarta.persistence.Lob")
-            template += "@Lob\n"
+            template += "\n\t@Lob"
         if mandatory:
             column_params.append("nullable = true")
         if unique:
@@ -176,18 +177,16 @@ class EntityFieldUtils:
         mandatory: bool = False,
         debug: bool = False,
     ) -> str:
-        imports_to_add = ["jakarta.persistence.Column"]
+        imports_to_add = [
+            "jakarta.persistence.Column",
+            "jakarta.persistence.GeneratedValue",
+            "jakarta.persistence.GenerationType",
+            "jakarta.persistence.Id",
+            field_package_path + "." + field_type,
+        ]
         snaked_field_name = self.common_utils.convert_to_snake_case(field_name, debug)
         column_params: List[str] = [f'name = "{snaked_field_name}"']
         template = "\n\t@Id\n"
-        imports_to_add.extend(
-            [
-                "jakarta.persistence.GeneratedValue",
-                "jakarta.persistence.GenerationType",
-                "jakarta.persistence.Id",
-                field_package_path,
-            ]
-        )
         if mandatory:
             column_params.append("nullable = true")
         if id_generation == "sequence":
@@ -295,7 +294,7 @@ class EntityFieldUtils:
         self.treesitter_utils.update_buffer(
             tree=updated_buffer_tree,
             buffer_path=buffer_path,
-            save=True,
+            save=False,
         )
         if debug:
             self.logging.log(
@@ -309,8 +308,7 @@ class EntityFieldUtils:
 
     def create_basic_entity_field(
         self,
-        buffer_tree: Tree,
-        buffer_path: Path,
+        buffer_file_data: JavaFileData,
         field_package_path: str,
         field_type: str,
         field_name: str,
@@ -338,12 +336,13 @@ class EntityFieldUtils:
             large_object=large_object,
             debug=debug,
         )
-        self.update_buffer(buffer_tree, buffer_path, template, debug)
+        self.update_buffer(
+            buffer_file_data.tree, buffer_file_data.path, template, debug
+        )
 
     def create_enum_entity_field(
         self,
-        buffer_tree: Tree,
-        buffer_path: Path,
+        buffer_file_data: JavaFileData,
         field_package_path: str,
         field_type: str,
         field_name: str,
@@ -363,12 +362,13 @@ class EntityFieldUtils:
             unique=unique,
             debug=debug,
         )
-        self.update_buffer(buffer_tree, buffer_path, template, debug)
+        self.update_buffer(
+            buffer_file_data.tree, buffer_file_data.path, template, debug
+        )
 
     def create_id_entity_field(
         self,
-        buffer_tree: Tree,
-        buffer_path: Path,
+        buffer_file_data: JavaFileData,
         field_package_path: str,
         field_type: str,
         field_name: str,
@@ -394,4 +394,6 @@ class EntityFieldUtils:
             mandatory=mandatory,
             debug=debug,
         )
-        self.update_buffer(buffer_tree, buffer_path, template, debug)
+        self.update_buffer(
+            buffer_file_data.tree, buffer_file_data.path, template, debug
+        )
