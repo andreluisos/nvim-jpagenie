@@ -7,6 +7,7 @@ class Other(Enum):
     ORPHAN_REMOVAL = "orphan_removal"
     LARGE_OBJECT = "large_object"
     EQUALS_HASHCODE = "equals_hashcode"
+    MUTABLE = "mutable"
 
     @classmethod
     def from_value(cls, value: str) -> "Other":

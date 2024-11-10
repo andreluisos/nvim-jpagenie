@@ -5,12 +5,17 @@ from pynvim.api.nvim import Nvim
 from tree_sitter import Tree
 
 from custom_types.enum_type import EnumType
+from custom_types.other import Other
 from custom_types.field_time_zone_storage import FieldTimeZoneStorage
 from custom_types.field_temporal import FieldTemporal
 from custom_types.id_generation import IdGeneration
 from custom_types.id_generation_type import IdGenerationType
 from custom_types.log_level import LogLevel
 from custom_types.java_file_data import JavaFileData
+from custom_types.create_id_field_args import CreateIdEntityFieldArgs
+from custom_types.create_basic_field_args import CreateBasicEntityFieldArgs
+from custom_types.create_enum_field_args import CreateEnumEntityFieldArgs
+
 from utils.treesitter_utils import TreesitterUtils
 from utils.common_utils import CommonUtils
 from utils.logging import Logging
@@ -246,7 +251,7 @@ class EntityFieldUtils:
             [
                 "jakarta.persistence.Enumerated",
                 "jakarta.persistence.EnumType",
-                field_package_path,
+                field_package_path + "." + field_type,
             ]
         )
         template = f"\n\t@Enumerated({enum_type})"
@@ -307,31 +312,21 @@ class EntityFieldUtils:
     def create_basic_entity_field(
         self,
         buffer_file_data: JavaFileData,
-        field_package_path: str,
-        field_type: str,
-        field_name: str,
-        field_length: int,
-        field_precision: int,
-        field_scale: int,
-        field_time_zone_storage: Optional[FieldTimeZoneStorage],
-        field_temporal: Optional[FieldTemporal],
-        mandatory: bool,
-        unique: bool,
-        large_object: bool,
+        args: CreateBasicEntityFieldArgs,
         debug: bool = False,
     ) -> None:
         template = self.generate_basic_field_template(
-            field_package_path=field_package_path,
-            field_type=field_type,
-            field_name=field_name,
-            field_length=field_length,
-            field_precision=field_precision,
-            field_scale=field_scale,
-            field_time_zone_storage=field_time_zone_storage,
-            field_temporal=field_temporal,
-            mandatory=mandatory,
-            unique=unique,
-            large_object=large_object,
+            field_package_path=args.field_package_path,
+            field_type=args.field_type,
+            field_name=args.field_name,
+            field_length=args.field_length,
+            field_precision=args.field_precision,
+            field_scale=args.field_scale,
+            field_time_zone_storage=args.field_time_zone_storage_enum,
+            field_temporal=args.field_temporal_enum,
+            mandatory=True if Other.MANDATORY in args.other_enum else False,
+            unique=True if Other.UNIQUE in args.other_enum else False,
+            large_object=True if Other.LARGE_OBJECT in args.other_enum else False,
             debug=debug,
         )
         self.update_buffer(
@@ -341,23 +336,17 @@ class EntityFieldUtils:
     def create_enum_entity_field(
         self,
         buffer_file_data: JavaFileData,
-        field_package_path: str,
-        field_type: str,
-        field_name: str,
-        field_length: Optional[int],
-        enum_type: EnumType = EnumType.ORDINAL,
-        mandatory: bool = False,
-        unique: bool = False,
+        args: CreateEnumEntityFieldArgs,
         debug: bool = False,
     ) -> None:
         template = self.generate_enum_field_template(
-            field_package_path=field_package_path + "." + field_type,
-            field_type=field_type,
-            field_name=field_name,
-            field_length=field_length,
-            enum_type=enum_type,
-            mandatory=mandatory,
-            unique=unique,
+            field_package_path=args.field_package_path,
+            field_type=args.field_type,
+            field_name=args.field_name,
+            field_length=args.field_length,
+            enum_type=args.enum_type_enum,
+            mandatory=True if Other.MANDATORY in args.other_enum else False,
+            unique=True if Other.UNIQUE in args.other_enum else False,
             debug=debug,
         )
         self.update_buffer(
@@ -367,29 +356,20 @@ class EntityFieldUtils:
     def create_id_entity_field(
         self,
         buffer_file_data: JavaFileData,
-        field_package_path: str,
-        field_type: str,
-        field_name: str,
-        id_generation: IdGeneration,
-        id_generation_type: Optional[IdGenerationType],
-        generator_name: Optional[str],
-        sequence_name: Optional[str],
-        initial_value: Optional[int],
-        allocation_size: Optional[int],
-        mandatory: bool = False,
+        args: CreateIdEntityFieldArgs,
         debug: bool = False,
     ) -> None:
         template = self.generate_id_field_template(
-            field_package_path=field_package_path,
-            field_type=field_type,
-            field_name=field_name,
-            id_generation=id_generation,
-            id_generation_type=id_generation_type,
-            generator_name=generator_name,
-            sequence_name=sequence_name,
-            initial_value=initial_value,
-            allocation_size=allocation_size,
-            mandatory=mandatory,
+            field_package_path=args.field_package_path,
+            field_type=args.field_type,
+            field_name=args.field_name,
+            id_generation=args.id_generation_enum,
+            id_generation_type=args.id_generation_type_enum,
+            generator_name=args.generator_name,
+            sequence_name=args.sequence_name,
+            initial_value=args.initial_value,
+            allocation_size=args.allocation_size,
+            mandatory=True if Other.MANDATORY in args.other_enum else False,
             debug=debug,
         )
         self.update_buffer(

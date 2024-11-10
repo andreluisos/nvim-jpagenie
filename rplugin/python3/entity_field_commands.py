@@ -7,14 +7,12 @@ from pynvim.api import Nvim
 from tree_sitter import Tree
 
 from base import Base
-from custom_types.enum_type import EnumType
-from custom_types.field_temporal import FieldTemporal
-from custom_types.field_time_zone_storage import FieldTimeZoneStorage
 from custom_types.declaration_type import DeclarationType
-from custom_types.id_generation import IdGeneration
-from custom_types.id_generation_type import IdGenerationType
 from custom_types.log_level import LogLevel
 from custom_types.java_file_data import JavaFileData
+from custom_types.create_id_field_args import CreateIdEntityFieldArgs
+from custom_types.create_basic_field_args import CreateBasicEntityFieldArgs
+from custom_types.create_enum_field_args import CreateEnumEntityFieldArgs
 
 
 @plugin
@@ -33,7 +31,8 @@ class EntityFieldCommands(Base):
             error_msg = "At least one and max 2 arguments allowed"
             self.logging.log(error_msg, LogLevel.ERROR)
             raise ValueError(error_msg)
-        self.debug = True if len(args) == 2 else False
+        self.logging.log(args, LogLevel.DEBUG)
+        self.debug = True if "debug" in args else False
         self.all_java_files = self.common_utils.get_all_java_files_data(self.debug)
         match args[0]:
             case "basic":
@@ -74,7 +73,6 @@ class EntityFieldCommands(Base):
                     }
                     for v in all_enum_files
                 ]
-
             case _:
                 error_msg = "Unable to get ui file"
                 self.logging.log(error_msg, LogLevel.ERROR)
@@ -116,80 +114,37 @@ class EntityFieldCommands(Base):
             )
 
     @function("CreateBasicEntityFieldCallback")
-    def crease_basic_entity_field_callback(self, args):
+    def crease_basic_entity_field_callback(self, args: List[Dict]):
+        converted_args = CreateBasicEntityFieldArgs(**args[0])
+        if self.debug:
+            self.logging.log(converted_args.field_name, LogLevel.DEBUG)
         if self.buffer_file_data:
             self.entity_field_utils.create_basic_entity_field(
                 buffer_file_data=self.buffer_file_data,
-                field_package_path=args[0]["field_package_path"],
-                field_type=args[0]["field_type"],
-                field_name=args[0]["field_name"],
-                field_length=args[0]["field_length"],
-                field_precision=args[0]["field_precision"],
-                field_scale=args[0]["field_scale"],
-                field_time_zone_storage=(
-                    FieldTimeZoneStorage.from_value(args[0]["field_time_zone_storage"])
-                    if "field_time_zone_storage" in args[0]
-                    else None
-                ),
-                field_temporal=(
-                    FieldTemporal(args[0]["field_temporal"])
-                    if "field_temporal" in args[0]
-                    else None
-                ),
-                mandatory=True if "mandatory" in args[0]["other"] else False,
-                unique=True if "unique" in args[0]["other"] else False,
-                large_object=True if "large_object" in args[0]["other"] else False,
+                args=converted_args,
                 debug=self.debug,
             )
 
     @function("CreateEnumEntityFieldCallback")
     def crease_enum_entity_field_callback(self, args):
+        converted_args = CreateEnumEntityFieldArgs(**args[0])
+        if self.debug:
+            self.logging.log(converted_args.field_name, LogLevel.DEBUG)
         if self.buffer_file_data:
             self.entity_field_utils.create_enum_entity_field(
                 buffer_file_data=self.buffer_file_data,
-                field_package_path=args[0]["field_package_path"],
-                field_name=args[0]["field_name"],
-                field_type=args[0]["field_type"],
-                field_length=args[0]["field_length"],
-                enum_type=EnumType.from_value(args[0]["enum_type"]),
-                mandatory=True if "mandatory" in args[0]["other"] else False,
-                unique=True if "unique" in args[0]["other"] else False,
+                args=converted_args,
                 debug=self.debug,
             )
 
     @function("CreateIdEntityFieldCallback")
-    def crease_id_entity_field_callback(self, args):
+    def crease_id_entity_field_callback(self, args: List[Dict]):
+        converted_args = CreateIdEntityFieldArgs(**args[0])
+        if self.debug:
+            self.logging.log(converted_args.field_name, LogLevel.DEBUG)
         if self.buffer_file_data:
             self.entity_field_utils.create_id_entity_field(
                 buffer_file_data=self.buffer_file_data,
-                field_package_path=args[0]["field_package_path"],
-                field_type=args[0]["field_type"],
-                field_name=args[0]["field_name"],
-                id_generation=IdGeneration.from_value(args[0]["id_generation"]),
-                id_generation_type=IdGenerationType.from_value(
-                    args[0]["id_generation_type"]
-                ),
-                generator_name=(
-                    args[0]["generator_name"]
-                    if args[0]["id_generation_type"] == "entity_exclusive_generation"
-                    else None
-                ),
-                sequence_name=(
-                    args[0]["sequence_name"]
-                    if args[0]["id_generation_type"] == "entity_exclusive_generation"
-                    else None
-                ),
-                initial_value=(
-                    int(args[0]["initial_value"])
-                    if args[0]["id_generation_type"] == "entity_exclusive_generation"
-                    and int(args[0]["initial_value"]) != 1
-                    else None
-                ),
-                allocation_size=(
-                    int(args[0]["allocation_size"])
-                    if args[0]["id_generation_type"] == "entity_exclusive_generation"
-                    and int(args[0]["allocation_size"]) != 50
-                    else None
-                ),
-                mandatory=True if "mandatory" in args[0]["other"] else False,
+                args=converted_args,
+                debug=self.debug,
             )
