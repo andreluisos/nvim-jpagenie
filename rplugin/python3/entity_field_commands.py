@@ -27,11 +27,11 @@ class EntityFieldCommands(Base):
 
     def process_command_args(self, args: List[str]) -> None:
         self.logging.reset_log_file()
+        self.logging.log(args, LogLevel.DEBUG)
         if len(args) < 1 or len(args) > 2:
             error_msg = "At least one and max 2 arguments allowed"
             self.logging.log(error_msg, LogLevel.ERROR)
             raise ValueError(error_msg)
-        self.logging.log(args, LogLevel.DEBUG)
         self.debug = True if "debug" in args else False
         self.all_java_files = self.common_utils.get_all_java_files_data(self.debug)
         match args[0]:
