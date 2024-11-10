@@ -22,9 +22,8 @@ end
 -- Install requirements if venv exists but requirements are not installed
 local pip_path = venv_path .. "/bin/pip"
 local requirements_path = plugin_root .. "requirements.txt"
-if vim.fn.empty(vim.fn.glob(venv_path .. "/lib")) > 0 then
-	vim.fn.system({ pip_path, "install", "-r", requirements_path })
-end
+-- TODO: check if dep is already installed before executing this?
+vim.fn.system({ pip_path, "install", "-r", requirements_path })
 
 -- Set Python host program
 vim.g.python3_host_prog = vim.fn.expand(venv_path .. "/bin/python")
