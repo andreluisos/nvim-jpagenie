@@ -454,7 +454,7 @@ class EntityRelationshipUtils:
                 ],
                 LogLevel.DEBUG,
             )
-            self.treesitter_utils.add_to_importing_list(imports_to_add, debug)
+        self.treesitter_utils.add_to_importing_list(imports_to_add, debug)
         return body
 
     def generate_field_body(
