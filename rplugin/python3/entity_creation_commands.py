@@ -11,7 +11,7 @@ class EntityCreationCommands(Base):
     def __init__(self, nvim: Nvim) -> None:
         super().__init__(nvim)
 
-    @command("CreateNewJpaEntity")
+    @command("CreateNewJPAEntity")
     def create_new_jpa_entity(self) -> None:
         self.logging.reset_log_file()
         found_entities = [
