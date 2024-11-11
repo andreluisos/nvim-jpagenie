@@ -13,7 +13,7 @@ class Logging:
         self.nvim = nvim
         self.file_path = Path(__file__).resolve()
         self.plugin_path = Path(
-            *self.file_path.parts[: self.file_path.parts.index("nvim-jpagenie") + 1]
+            *self.file_path.parts[: self.file_path.parts.index("nvim-javagenie") + 1]
         )
         self.log_file_path = self.plugin_path.joinpath("logging.log")
         if not self.plugin_path.exists():
