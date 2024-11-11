@@ -60,6 +60,7 @@ use {
 Among with bug fixing, I also plan to:
 
 - [ ] Create DTO for an entity (WIP)
+- [ ] Implement UI for JPA repository creation
 - [ ] Figure out a way to create tests
 - [ ] Implement Entity attribute/relationship editing
 - [ ] ![Port to Java?](https://github.com/andreluisos/nvim-jpagenie/issues/9)
