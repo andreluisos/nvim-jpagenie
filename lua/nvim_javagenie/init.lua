@@ -10,7 +10,7 @@ local venv_path = plugin_root .. "venv"
 
 -- Check if Python 3 is available
 if not vim.fn.has("python3") then
-	vim.cmd("echomsg ':python3 is not available, nvim-jpagenie will not be loaded.'")
+	vim.cmd("echomsg ':python3 is not available, nvim-javagenie will not be loaded.'")
 	return
 end
 
