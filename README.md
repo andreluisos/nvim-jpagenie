@@ -8,7 +8,7 @@
 [![Python](https://img.shields.io/badge/python-3670A0?style=for-the-badge&logo=python&logoColor=ffdd54)](http://www.python.org)
 [![Neovim](https://img.shields.io/badge/Neovim%200.9+-blue.svg?style=for-the-badge&logo=neovim)](https://neovim.io)
 
-<img alt="Nvim's Java-Genie" height="280" src="https://github.com/andreluisos/nvim-javagenie/blob/main/logo/Logo.png" />
+<img alt="Nvim's Java-Genie" height="280" src="https://github.com/andreluisos/nvim-jpagenie/blob/media/logo.png" />
 </div>
 
 # Introduction
