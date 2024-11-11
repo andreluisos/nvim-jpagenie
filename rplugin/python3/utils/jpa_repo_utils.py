@@ -2,7 +2,7 @@ from pathlib import Path
 from typing import Optional
 
 from pynvim.api.nvim import Nvim
-from tree_sitter import Tree
+from tree_sitter import Node, Tree
 
 from custom_types.log_level import LogLevel
 from custom_types.declaration_type import DeclarationType
@@ -162,19 +162,37 @@ class JpaRepositoryUtils:
         field_marker_name_query = """
         (field_declaration
             (modifiers
-                (marker_annotation) @marker_annotation))
+                (marker_annotation
+                    name: (identifier) @annotation_name)))
         """
         query_results = self.treesitter_utils.query_match(
             file_tree, field_marker_name_query
         )
-        if len(query_results) != 1:
+        self.logging.echomsg(f"len query_results {len(query_results)}")
+        if len(query_results) == 0:
             return None
+        field_declaration: Optional[Node] = None
+        id_field_type_node: Optional[Node] = None
         id_field_type: Optional[str] = None
-        modifiers = query_results[0].parent
-        if modifiers and modifiers.parent:
-            field_declaration = modifiers.parent.child_by_field_name("type")
-            if field_declaration and field_declaration.text:
-                id_field_type = field_declaration.text.decode()
+        id_node: Optional[Node] = None
+        for annotation in query_results:
+            if annotation.text:
+                name = self.treesitter_utils.convert_bytes_to_string(annotation.text)
+                if name == "Id":
+                    id_node = annotation
+        if id_node is None:
+            return None
+        marker_annotation = id_node.parent
+        if marker_annotation:
+            modifiers = marker_annotation.parent
+            if modifiers:
+                field_declaration = modifiers.parent
+        if field_declaration:
+            id_field_type_node = field_declaration.child_by_field_name("type")
+            if id_field_type_node and id_field_type_node.text:
+                id_field_type = self.treesitter_utils.convert_bytes_to_string(
+                    id_field_type_node.text
+                )
         if debug:
             self.logging.log(f"Id field type: {id_field_type}", LogLevel.DEBUG)
         return id_field_type
@@ -195,7 +213,8 @@ class JpaRepositoryUtils:
             error_msg = "Invalid JPA Entity"
             self.logging.log(error_msg, LogLevel.ERROR)
             raise ValueError(error_msg)
-        if not self.check_if_id_field_exists(file_data.tree, debug=debug):
+        id_type = self.find_id_field_type(file_data.tree, debug=True)
+        if not id_type:
             error_msg = "Unable to get superclass data"
             superclass_name = self.get_superclass_name(file_data.tree)
             if not superclass_name:
@@ -217,30 +236,30 @@ class JpaRepositoryUtils:
                 )
                 raise ValueError(error_msg)
             id_type = self.find_id_field_type(superclass_tree, debug=debug)
-            if id_type is None:
-                error_msg = "Unable to find get the Id field type on the superclass"
-                self.logging.log(
-                    error_msg,
-                    LogLevel.ERROR,
-                )
-                raise ValueError(error_msg)
-            jpa_repo_tree = self.generate_jpa_repository_template(
-                class_name=file_data.file_name,
-                package_path=file_data.package_path,
-                id_type=id_type,
-                debug=debug,
+        if id_type is None:
+            error_msg = "Unable to find get the Id field type"
+            self.logging.log(
+                error_msg,
+                LogLevel.ERROR,
             )
-            jpa_repo_path = buffer_path.parent.joinpath(
-                f"{file_data.file_name}Repository.java"
+            raise ValueError(error_msg)
+        jpa_repo_tree = self.generate_jpa_repository_template(
+            class_name=file_data.file_name,
+            package_path=file_data.package_path,
+            id_type=id_type,
+            debug=debug,
+        )
+        jpa_repo_path = buffer_path.parent.joinpath(
+            f"{file_data.file_name}Repository.java"
+        )
+        self.treesitter_utils.update_buffer(
+            tree=jpa_repo_tree,
+            buffer_path=jpa_repo_path,
+            save=True,
+            debug=debug,
+        )
+        if debug:
+            self.logging.log(
+                f"JPA Repository tree:\n{jpa_repo_tree.__repr__()}\n",
+                LogLevel.DEBUG,
             )
-            self.treesitter_utils.update_buffer(
-                tree=jpa_repo_tree,
-                buffer_path=jpa_repo_path,
-                save=True,
-                debug=debug,
-            )
-            if debug:
-                self.logging.log(
-                    f"JPA Repository tree:\n{jpa_repo_tree.__repr__()}\n",
-                    LogLevel.DEBUG,
-                )
