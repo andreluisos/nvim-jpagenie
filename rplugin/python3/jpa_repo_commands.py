@@ -22,7 +22,6 @@ class JpaRepoCommands(Base):
             raise ValueError(error_msg)
         self.debug = True if "debug" in args else False
         buffer_path = Path(self.nvim.current.buffer.name)
-        self.logging.echomsg(f"{self.debug}")
         self.jpa_repo_utils.create_jpa_repository(
             buffer_path=buffer_path, debug=self.debug
         )
