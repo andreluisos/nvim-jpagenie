@@ -168,7 +168,6 @@ class JpaRepositoryUtils:
         query_results = self.treesitter_utils.query_match(
             file_tree, field_marker_name_query
         )
-        self.logging.echomsg(f"len query_results {len(query_results)}")
         if len(query_results) == 0:
             return None
         field_declaration: Optional[Node] = None
