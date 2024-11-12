@@ -24,7 +24,7 @@ class EntityCreationCommands(Base):
         found_entities = [
             e
             for e in self.common_utils.get_all_java_files_data(True)
-            if e.is_jpa_entity
+            if e.is_jpa_entity or e.is_mapped_superclass
         ]
         parent_entities = [
             {

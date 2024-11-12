@@ -109,6 +109,13 @@ class CommonUtils:
                             tree=result_tree, annotation_name="Entity", debug=debug
                         )
                     )
+                    is_mapped_superclass = (
+                        self.treesitter_utils.buffer_public_class_has_annotation(
+                            tree=result_tree,
+                            annotation_name="MappedSuperclass",
+                            debug=debug,
+                        )
+                    )
                     if result.type == "class_declaration":
                         declaration_type = DeclarationType.CLASS
                     elif result.type == "enum_declaration":
@@ -128,6 +135,7 @@ class CommonUtils:
                         tree=file_tree,
                         declaration_type=declaration_type,
                         is_jpa_entity=is_jpa_entity,
+                        is_mapped_superclass=is_mapped_superclass,
                     )
 
     def get_all_java_files_data(self, debug: bool = False) -> List[JavaFileData]:

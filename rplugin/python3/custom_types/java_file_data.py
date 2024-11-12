@@ -14,6 +14,7 @@ class JavaFileData:
     tree: Tree
     declaration_type: DeclarationType
     is_jpa_entity: bool
+    is_mapped_superclass: bool
 
     def print(self) -> str:
         repr = (
@@ -23,6 +24,7 @@ class JavaFileData:
             f"path='{str(self.path)}', "
             f"declaration_type='{self.declaration_type}', "
             f"is_jpa_entity='{self.is_jpa_entity}'"
+            f"is_mapped_superclass='{self.is_mapped_superclass}'"
             f")"
         )
         # Escape single quotes for Vim
