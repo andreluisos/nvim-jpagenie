@@ -90,7 +90,7 @@ class EntityRelationshipCommands(Base):
             if v.path != buffer_path and v.is_jpa_entity
         ]
         self.nvim.exec_lua(
-            self.file_utils.read_ui_file_as_string(self.ui_file),
+            self.common_utils.read_ui_file_as_string(self.ui_file),
             (self.ui_path, data),
         )
 

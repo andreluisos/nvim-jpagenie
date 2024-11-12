@@ -7,7 +7,6 @@ from utils.common_utils import CommonUtils
 from utils.entity_creation_utils import EntityCreationUtils
 from utils.entity_field_utils import EntityFieldUtils
 from utils.entity_rel_utils import EntityRelationshipUtils
-from utils.file_utils import FileUtils
 from utils.jpa_repo_utils import JpaRepositoryUtils
 from utils.logging import Logging
 from utils.path_utils import PathUtils
@@ -20,7 +19,6 @@ class Base(object):
         self.cwd = Path(self.nvim.funcs.getcwd()).resolve()
         self.ui_path = str(Path(__file__).parent.resolve().joinpath("ui"))
         self.logging = Logging(self.nvim)
-        self.file_utils = FileUtils(self.logging)
         self.java_basic_types = JAVA_BASIC_TYPES
         self.treesitter_utils = TreesitterUtils(
             nvim=self.nvim,

@@ -110,7 +110,7 @@ class EntityFieldCommands(Base):
                 self.buffer_file_data.file_name, self.debug
             )
             self.nvim.exec_lua(
-                self.file_utils.read_ui_file_as_string(self.ui_file),
+                self.common_utils.read_ui_file_as_string(self.ui_file),
                 (self.ui_path, self.data, snaked_class_name),
             )
 

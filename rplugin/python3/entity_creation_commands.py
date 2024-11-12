@@ -37,7 +37,7 @@ class EntityCreationCommands(Base):
         ]
         root_package_path = str(self.path_utils.get_spring_root_package_path(True))
         self.nvim.exec_lua(
-            self.file_utils.read_ui_file_as_string("create_entity.lua"),
+            self.common_utils.read_ui_file_as_string("create_entity.lua"),
             (
                 self.ui_path,
                 parent_entities,
