@@ -1,4 +1,3 @@
-from pathlib import Path
 from typing import List, Optional
 from pynvim.api.nvim import Nvim
 
@@ -25,36 +24,6 @@ class EntityCreationUtils:
         self.path_utils = path_utils
         self.logging = logging
         self.common_utils = common_utils
-
-    def get_base_path(self, main_class_path: Path, debug: bool = False) -> Path:
-        base_path = main_class_path.parent
-        if debug:
-            self.logging.log(f"Base path: {str(base_path)}", LogLevel.DEBUG)
-        return base_path
-
-    def get_relative_path(self, package_path: str, debug: bool = False) -> Path:
-        relative_path = Path(package_path.replace(".", "/"))
-        if debug:
-            self.logging.log(f"Relative path: {str(relative_path)}", LogLevel.DEBUG)
-        return relative_path
-
-    def construct_file_path(
-        self, base_path: Path, relative_path: Path, file_name: str, debug: bool = False
-    ) -> Path:
-        try:
-            index_to_replace = base_path.parts.index("main")
-        except ValueError:
-            error_msg = "Unable to parse root directory"
-            self.logging.log(error_msg, LogLevel.ERROR)
-            raise ValueError(error_msg)
-        file_path = (
-            Path(*base_path.parts[: index_to_replace + 2])
-            / relative_path
-            / f"{file_name}.java"
-        )
-        if debug:
-            self.logging.log(f"File path: {str(file_path)}", LogLevel.DEBUG)
-        return file_path
 
     def generate_new_entity_template(
         self,
@@ -102,9 +71,9 @@ class EntityCreationUtils:
         debug: bool = False,
     ):
         main_class_path = self.path_utils.get_spring_main_class_path()
-        base_path = self.get_base_path(main_class_path)
-        relative_path = self.get_relative_path(args.package_path)
-        final_path = self.construct_file_path(
+        base_path = self.common_utils.get_base_path(main_class_path)
+        relative_path = self.common_utils.get_relative_path(args.package_path)
+        final_path = self.common_utils.construct_file_path(
             base_path=base_path, relative_path=relative_path, file_name=args.entity_name
         )
         if final_path.exists():
