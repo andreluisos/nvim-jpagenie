@@ -73,8 +73,8 @@ local function render_field_type_component(_signal, options)
 				node.is_done = false
 			end
 			selected_node.is_done = true
-			_signal["field_type"] = selected_node.type
-			_signal["field_package_path"] = selected_node.id
+			_signal.field_type = selected_node.type
+			_signal.field_package_path = selected_node.package_path
 			if selected_node.type == "UUID" then
 				_signal.uuid_type_generation_type_hidden = false
 				_signal.id_generation = "uuid"

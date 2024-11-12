@@ -53,6 +53,7 @@ class EntityFieldCommands(Base):
                         "name": f"{v[0]} ({v[1]})",
                         "id": f"{v[1]}.{v[0]}",
                         "type": f"{v[0]}",
+                        "package_path": f"{v[1]}",
                     }
                     for v in self.java_basic_types
                     if v[0] in ["Long", "Integer", "String", "UUID"]
