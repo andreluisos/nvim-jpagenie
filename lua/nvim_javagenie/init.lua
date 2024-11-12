@@ -37,6 +37,12 @@ end)
 vim.api.nvim_set_keymap("n", "<leader>cj", "", { noremap = true, silent = true, desc = "JPA" })
 vim.api.nvim_set_keymap(
 	"n",
+	"<leader>cjn",
+	":CreateNewJavaFile<CR>",
+	{ noremap = true, silent = true, desc = "Create new Java file" }
+)
+vim.api.nvim_set_keymap(
+	"n",
 	"<leader>cje",
 	":CreateNewJPAEntity<CR>",
 	{ noremap = true, silent = true, desc = "Create new JPA Entity" }
