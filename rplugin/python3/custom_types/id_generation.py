@@ -6,6 +6,7 @@ class IdGeneration(Enum):
     AUTO = "auto"
     IDENTITY = "identity"
     SEQUENCE = "sequence"
+    UUID = "uuid"
 
     @classmethod
     def from_value(cls, value: str) -> "IdGeneration":

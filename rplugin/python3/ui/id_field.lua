@@ -30,7 +30,8 @@ local signal = n.create_signal({
 	sequence_name_hidden = true,
 	initial_value_hidden = true,
 	allocation_size_hidden = true,
-	other = { "mandatory", "mutable" },
+	uuid_type_generation_type_hidden = true,
+	other = { "mandatory" },
 })
 
 local function render_main_title()
@@ -74,6 +75,13 @@ local function render_field_type_component(_signal, options)
 			selected_node.is_done = true
 			_signal["field_type"] = selected_node.type
 			_signal["field_package_path"] = selected_node.id
+			if selected_node.type == "UUID" then
+				_signal.uuid_type_generation_type_hidden = false
+				_signal.id_generation = "uuid"
+			else
+				_signal.uuid_type_generation_type_hidden = true
+				_signal.id_generation = "auto"
+			end
 			tree:render()
 		end,
 		prepare_node = function(node, line, _)
@@ -92,12 +100,41 @@ end
 local function render_other_component(_signal)
 	local data = {
 		n.node({ text = "Mandatory", is_done = true, id = "mandatory" }),
-		n.node({ text = "Mutable", is_done = true, id = "mutable" }),
+		n.node({ text = "Mutable", is_done = false, id = "mutable" }),
 	}
 	return select_many.render_component(nil, "Other", data, _signal, "other")
 end
 
-local function render_id_generation_component(_signal, _data, _title, _signal_key)
+local function render_uuid_id_generation_component(_signal, _data, _title, _signal_key, _signal_hidden_key)
+	return n.tree({
+		autofocus = false,
+		size = #_data,
+		border_label = _title,
+		data = _data,
+		on_select = function(selected_node, component)
+			local tree = component:get_tree()
+			for _, node in ipairs(_data) do
+				node.is_done = false
+			end
+			selected_node.is_done = true
+			_signal[_signal_key] = selected_node.id
+			tree:render()
+		end,
+		prepare_node = function(node, line, _)
+			if node.is_done then
+				line:append("◉", "String")
+			else
+				line:append("○", "Comment")
+			end
+			line:append(" ")
+			line:append(node.text)
+			return line
+		end,
+		hidden = _signal[_signal_hidden_key],
+	})
+end
+
+local function render_id_generation_component(_signal, _data, _title, _signal_key, _signal_hidden_key)
 	return n.tree({
 		autofocus = false,
 		size = #_data,
@@ -127,6 +164,7 @@ local function render_id_generation_component(_signal, _data, _title, _signal_ke
 			line:append(node.text)
 			return line
 		end,
+		hidden = _signal[_signal_hidden_key]:negate(),
 	})
 end
 
@@ -217,12 +255,17 @@ local function render_component()
 		n.gap(1),
 		render_field_type_component(signal, args[2]),
 		render_text_input_component("Field name", "field_name", false, 1),
+		render_uuid_id_generation_component(signal, {
+			n.node({ text = "None", is_done = false, id = "none" }),
+			n.node({ text = "Auto", is_done = false, id = "auto" }),
+			n.node({ text = "UUID", is_done = true, id = "uuid" }),
+		}, "Id generation", "id_generation", "uuid_type_generation_type_hidden"),
 		render_id_generation_component(signal, {
 			n.node({ text = "None", is_done = false, id = "none" }),
 			n.node({ text = "Auto", is_done = true, id = "auto" }),
 			n.node({ text = "Identity", is_done = false, id = "identity" }),
 			n.node({ text = "Sequence", is_done = false, id = "sequence" }),
-		}, "Id generation", "id_generation"),
+		}, "Id generation", "id_generation", "uuid_type_generation_type_hidden"),
 		render_id_generation_type_component(signal, {
 			n.node({ text = "None", is_done = true, id = "none" }),
 			n.node({ text = "Generate exclusively for entity", is_done = false, id = "entity_exclusive_generation" }),
