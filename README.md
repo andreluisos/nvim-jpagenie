@@ -66,7 +66,7 @@ Among with bug fixing, I also plan to:
 
 - [ ] Create DTO for an entity (WIP)
 - [ ] Implement UI for JPA repository creation
-- [ ] Create Java files (enum, interface, annotation, class, record)
+- [x] Create Java files (enum, interface, annotation, class, record)
 - [ ] Implement Spring Initializr and project loading
 - [ ] Runner for Java applications
 - [ ] Figure out a way to create tests
@@ -86,6 +86,7 @@ The plugin includes a range of features, each powered by dedicated Tree-sitter q
 ![JPA Entity creation](https://github.com/andreluisos/nvim-jpagenie/blob/media/create_entity.gif)
 
 ## Easily add Entity attributes
+
 - ID attributes
 - Basic type attributes
 - Enum type attributes
@@ -95,6 +96,7 @@ The plugin includes a range of features, each powered by dedicated Tree-sitter q
 ![Entity enum attribute creation](https://github.com/andreluisos/nvim-jpagenie/blob/media/create_enum_attribute.gif)
 
 ## Quickly create Entity relationships
+
 - Many-to-one relationships
 - One-to-one relationships
 - Many-to-one relationships with automatic equals() and hashCode() method generation

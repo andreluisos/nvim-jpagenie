@@ -3,6 +3,7 @@ from pathlib import Path
 from pynvim.api.nvim import Nvim
 
 from constants.java_basic_types import JAVA_BASIC_TYPES
+from utils.java_file_utils import JavaFileLib
 from utils.common_utils import CommonUtils
 from utils.entity_creation_utils import EntityCreationUtils
 from utils.entity_field_utils import EntityFieldUtils
@@ -63,4 +64,11 @@ class Base(object):
             path_utils=self.path_utils,
             common_utils=self.common_utils,
             logging=self.logging,
+        )
+        self.java_file_utils = JavaFileLib(
+            nvim=self.nvim,
+            logging=self.logging,
+            treesitter_utils=self.treesitter_utils,
+            path_utils=self.path_utils,
+            common_utils=self.common_utils,
         )
