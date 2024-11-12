@@ -86,12 +86,18 @@ The plugin includes a range of features, each powered by dedicated Tree-sitter q
 ![JPA Entity creation](https://github.com/andreluisos/nvim-jpagenie/blob/media/create_entity.gif)
 
 ## Easily add Entity attributes
+- ID attributes
+- Basic type attributes
+- Enum type attributes
 
 ![Entity ID attribute creation](https://github.com/andreluisos/nvim-jpagenie/blob/media/create_id_attribute.gif)
 ![Entity basic attribute creation](https://github.com/andreluisos/nvim-jpagenie/blob/media/create_basic_attribute.gif)
 ![Entity enum attribute creation](https://github.com/andreluisos/nvim-jpagenie/blob/media/create_enum_attribute.gif)
 
 ## Quickly create Entity relationships
+- Many-to-one relationships
+- One-to-one relationships
+- Many-to-one relationships with automatic equals() and hashCode() method generation
 
 ![Entity ID attribute creation](https://github.com/andreluisos/nvim-jpagenie/blob/media/create_many_to_one.gif)
 ![Entity basic attribute creation](https://github.com/andreluisos/nvim-jpagenie/blob/media/create_one_to_one.gif)
