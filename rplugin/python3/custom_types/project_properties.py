@@ -3,7 +3,7 @@ from pathlib import Path
 
 
 @dataclass
-class GradleProjectProperties:
+class ProjectProperties:
     project_name: str
     project_group: str
     project_version: str
