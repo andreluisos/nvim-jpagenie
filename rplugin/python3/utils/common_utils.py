@@ -1,4 +1,5 @@
 from re import sub
+from subprocess import run, CompletedProcess, CalledProcessError
 from typing import List, Optional
 
 
@@ -139,7 +140,7 @@ class CommonUtils:
                     )
 
     def get_all_java_files_data(self, debug: bool = False) -> List[JavaFileData]:
-        root_path = self.path_utils.get_spring_project_root_path()
+        root_path = self.path_utils.get_project_root_path()
         files_found: List[JavaFileData] = []
         for p in root_path.rglob("*.java"):
             if "main" not in p.parts:
@@ -213,3 +214,30 @@ class CommonUtils:
         if debug:
             self.logging.log(f"File path: {str(file_path)}", LogLevel.DEBUG)
         return file_path
+
+    def run_subprocess(
+        self, command: list[str], debug: bool = False
+    ) -> CompletedProcess:
+        try:
+            result = run(
+                command,
+                capture_output=True,
+                text=True,
+                check=True,
+            )
+            if debug:
+                self.logging.log(f"Command: {' '.join(command)}", LogLevel.DEBUG)
+                self.logging.log(f"Output: {result.stdout}", LogLevel.DEBUG)
+                self.logging.log(f"Error: {result.stderr}", LogLevel.DEBUG)
+            return result
+        except CalledProcessError as e:
+            if debug:
+                self.logging.log(f"Command failed: {' '.join(command)}", LogLevel.DEBUG)
+                self.logging.log(f"Output: {e.stdout}", LogLevel.DEBUG)
+                self.logging.log(f"Error: {e.stderr}", LogLevel.DEBUG)
+            raise
+        except Exception as e:
+            error_msg = f"Unexpected error: {str(e)}"
+            self.logging.echomsg(error_msg)
+            self.logging.log(error_msg, LogLevel.ERROR)
+            raise ValueError(error_msg)
