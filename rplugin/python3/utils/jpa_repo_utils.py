@@ -136,7 +136,7 @@ class JpaRepositoryUtils:
             name: (identifier) @class_name
             )
         """
-        root_path = self.path_utils.get_spring_project_root_path()
+        root_path = self.path_utils.get_project_root_path()
         super_class_tree: Optional[Tree] = None
         for p in root_path.rglob("*.java"):
             file_tree = self.treesitter_utils.convert_path_to_tree(p)

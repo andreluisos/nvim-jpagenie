@@ -3,6 +3,7 @@ from pathlib import Path
 from pynvim.api.nvim import Nvim
 
 from constants.java_basic_types import JAVA_BASIC_TYPES
+from utils.build_helper import BuildHelper
 from utils.java_file_utils import JavaFileLib
 from utils.common_utils import CommonUtils
 from utils.entity_creation_utils import EntityCreationUtils
@@ -71,4 +72,12 @@ class Base(object):
             treesitter_utils=self.treesitter_utils,
             path_utils=self.path_utils,
             common_utils=self.common_utils,
+        )
+        self.build_helper = BuildHelper(
+            nvim=self.nvim,
+            cwd=self.cwd,
+            path_utils=self.path_utils,
+            treesitter_utils=self.treesitter_utils,
+            common_utils=self.common_utils,
+            logging=self.logging,
         )

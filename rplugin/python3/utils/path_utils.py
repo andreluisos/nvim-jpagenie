@@ -3,6 +3,7 @@ from pathlib import Path
 from custom_types.log_level import LogLevel
 from utils.treesitter_utils import TreesitterUtils
 from utils.logging import Logging
+from shutil import which
 
 
 class PathUtils:
@@ -18,7 +19,15 @@ class PathUtils:
             "settings.gradle",
         ]
 
-    def get_spring_project_root_path(self) -> Path:
+    def get_java_executable_path(self) -> Path:
+        java_path = which("java")
+        if java_path:
+            return Path(java_path)
+        error_msg = "Java executable not found in PATH"
+        self.logging.log(error_msg, LogLevel.CRITICAL)
+        raise FileNotFoundError("Java executable not found in PATH.")
+
+    def get_project_root_path(self) -> Path:
         cwd = Path(self.cwd)
         while cwd != cwd.root:
             if any((cwd / root_file).exists() for root_file in self.root_files):
@@ -32,7 +41,7 @@ class PathUtils:
         raise FileNotFoundError(error_msg)
 
     def get_spring_main_class_path(self) -> Path:
-        root_path = self.get_spring_project_root_path()
+        root_path = self.get_project_root_path()
         for p in root_path.rglob("*.java"):
             buffer_tree = self.treesitter_utils.convert_path_to_tree(p)
             buffer_is_main_class = (

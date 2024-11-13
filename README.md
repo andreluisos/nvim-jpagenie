@@ -68,7 +68,7 @@ Among with bug fixing, I also plan to:
 - [ ] Implement UI for JPA repository creation
 - [x] Create Java files (enum, interface, annotation, class, record)
 - [ ] Implement Spring Initializr and project loading
-- [ ] Runner for Java applications
+- [x] Runner for Java applications
 - [ ] Figure out a way to create tests
 - [ ] Implement Entity attribute/relationship editing
 - [ ] ![Port to Java?](https://github.com/andreluisos/nvim-jpagenie/issues/9)
