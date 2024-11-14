@@ -39,7 +39,7 @@ class EntityCreationCommands(Base):
         self.nvim.exec_lua(
             self.common_utils.read_ui_file_as_string("create_entity.lua"),
             (
-                self.ui_path,
+                str(self.path_utils.get_plugin_base_path().joinpath("ui")),
                 parent_entities,
                 root_package_path,
             ),

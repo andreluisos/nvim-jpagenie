@@ -19,6 +19,9 @@ class PathUtils:
             "settings.gradle",
         ]
 
+    def get_plugin_base_path(self) -> Path:
+        return Path(__file__).parent.parent.resolve()
+
     def get_java_executable_path(self) -> Path:
         java_path = which("java")
         if java_path:

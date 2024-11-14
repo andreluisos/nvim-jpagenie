@@ -111,7 +111,11 @@ class EntityFieldCommands(Base):
             )
             self.nvim.exec_lua(
                 self.common_utils.read_ui_file_as_string(self.ui_file),
-                (self.ui_path, self.data, snaked_class_name),
+                (
+                    str(self.path_utils.get_plugin_base_path().joinpath("ui")),
+                    self.data,
+                    snaked_class_name,
+                ),
             )
 
     @function("CreateBasicEntityFieldCallback")
