@@ -12,7 +12,7 @@ class JpaRepoCommands(Base):
         self.debug: bool = False
 
     @command("BuildAndRunProject", nargs="*")
-    def test(self, args: List[str]) -> None:
+    def build_and_run_project(self, args: List[str]) -> None:
         self.logging.reset_log_file()
         self.logging.log(args, LogLevel.DEBUG)
         if len(args) > 1:
