@@ -14,3 +14,6 @@ __pycache__/
 *.log
 
 .idea/
+
+
+rplugin/python3/bin
