@@ -52,7 +52,8 @@ class JavaFileLib:
         file_name: str,
         debug: bool = False,
     ) -> Path:
-        main_class_path = self.path_utils.get_spring_main_class_path()
+        project_root_path = self.path_utils.get_project_root_path()
+        main_class_path = self.path_utils.get_spring_main_class_path(project_root_path)
         base_path = self.common_utils.get_base_path(main_class_path)
         relative_path = self.common_utils.get_relative_path(package_path)
         file_path = self.common_utils.construct_file_path(

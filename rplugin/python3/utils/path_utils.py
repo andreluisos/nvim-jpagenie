@@ -43,9 +43,33 @@ class PathUtils:
         )
         raise FileNotFoundError(error_msg)
 
-    def get_spring_main_class_path(self) -> Path:
-        root_path = self.get_project_root_path()
-        for p in root_path.rglob("*.java"):
+    def get_java_project_main_class(self, project_root_path: Path) -> Path:
+        query = """
+        (method_declaration
+            (modifiers) @mod
+            type: (void_type)
+            name: (identifier) @method-name
+            parameters: (formal_parameters
+                (formal_parameter
+                    type: (array_type
+                        (type_identifier) @param-type)
+                    name: (identifier) @param-name)))
+        (#eq? @mod "public static")
+        (#eq? @method-name "main")
+        (#eq? @param-type "String")
+        (#eq? @param-name "args")
+        """
+        for p in project_root_path.rglob("*.java"):
+            buffer_tree = self.treesitter_utils.convert_path_to_tree(p)
+            query_results = self.treesitter_utils.query_match(buffer_tree, query)
+            if len(query_results) >= 1:
+                return p.resolve()
+        error_msg = "Main class path not found"
+        self.logging.log(error_msg, LogLevel.CRITICAL)
+        raise FileNotFoundError(error_msg)
+
+    def get_spring_main_class_path(self, spring_project_root_path: Path) -> Path:
+        for p in spring_project_root_path.rglob("*.java"):
             buffer_tree = self.treesitter_utils.convert_path_to_tree(p)
             buffer_is_main_class = (
                 self.treesitter_utils.buffer_public_class_has_annotation(
@@ -63,7 +87,8 @@ class PathUtils:
 
     def get_spring_root_package_path(self, debug: bool = False) -> str:
         main_dir_name = "main"
-        full_path = self.get_spring_main_class_path()
+        project_root_path = self.get_project_root_path()
+        full_path = self.get_spring_main_class_path(project_root_path)
         path_parts = Path(full_path).parts
         try:
             main_dir_index = path_parts.index(main_dir_name)

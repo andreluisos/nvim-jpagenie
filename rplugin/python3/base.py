@@ -3,6 +3,7 @@ from pathlib import Path
 from pynvim.api.nvim import Nvim
 
 from constants.java_basic_types import JAVA_BASIC_TYPES
+from utils.gradle_helper import GradleHelper
 from utils.build_helper import BuildHelper
 from utils.java_file_utils import JavaFileLib
 from utils.common_utils import CommonUtils
@@ -19,7 +20,6 @@ class Base(object):
     def __init__(self, nvim: Nvim) -> None:
         self.nvim = nvim
         self.cwd = Path(self.nvim.funcs.getcwd()).resolve()
-        self.ui_path = str(Path(__file__).parent.resolve().joinpath("ui"))
         self.logging = Logging(self.nvim)
         self.java_basic_types = JAVA_BASIC_TYPES
         self.treesitter_utils = TreesitterUtils(
@@ -74,6 +74,14 @@ class Base(object):
             common_utils=self.common_utils,
         )
         self.build_helper = BuildHelper(
+            nvim=self.nvim,
+            cwd=self.cwd,
+            path_utils=self.path_utils,
+            treesitter_utils=self.treesitter_utils,
+            common_utils=self.common_utils,
+            logging=self.logging,
+        )
+        self.gradle_helper = GradleHelper(
             nvim=self.nvim,
             cwd=self.cwd,
             path_utils=self.path_utils,

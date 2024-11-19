@@ -25,7 +25,7 @@ class JavaFileCreationCommands(Base):
         self.nvim.exec_lua(
             self.common_utils.read_ui_file_as_string("create_java_file.lua"),
             (
-                self.ui_path,
+                str(self.path_utils.get_plugin_base_path().joinpath("ui")),
                 root_package_path,
             ),
         )
