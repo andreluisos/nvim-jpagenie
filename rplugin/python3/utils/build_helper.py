@@ -209,7 +209,7 @@ class BuildHelper:
         error: Optional[str] = None
         try:
             result = self.common_utils.run_subprocess(
-                [f"{str(self.build_tool_path)}", "build"]
+                [f"{str(self.build_tool_path)}", "build", "-x", "tests"]
             )
             output = " ".join(result.stdout.splitlines())
             error = " ".join(result.stderr.splitlines())
