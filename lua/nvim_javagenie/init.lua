@@ -34,10 +34,16 @@ vim.schedule(function()
 end)
 
 -- Keymaps
-vim.api.nvim_set_keymap("n", "<leader>cj", "", { noremap = true, silent = true, desc = "JPA" })
+vim.api.nvim_set_keymap("n", "<leader>cj", "", { noremap = true, silent = true, desc = "Java" })
 vim.api.nvim_set_keymap(
 	"n",
-	"<leader>cjb",
+	"<leader>cjbb",
+	":BuildProject<CR>",
+	{ noremap = true, silent = true, desc = "Build project" }
+)
+vim.api.nvim_set_keymap(
+	"n",
+	"<leader>cjbr",
 	":BuildAndRunProject<CR>",
 	{ noremap = true, silent = true, desc = "Build and run project" }
 )

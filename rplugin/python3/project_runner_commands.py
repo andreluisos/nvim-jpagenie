@@ -21,3 +21,14 @@ class JpaRepoCommands(Base):
             raise ValueError(error_msg)
         self.debug = True if "debug" in args else False
         self.build_helper.run(self.debug)
+
+    @command("BuildProject", nargs="*")
+    def build__project(self, args: List[str]) -> None:
+        self.logging.reset_log_file()
+        self.logging.log(args, LogLevel.DEBUG)
+        if len(args) > 1:
+            error_msg = "Only one argument allowed"
+            self.logging.log(error_msg, LogLevel.ERROR)
+            raise ValueError(error_msg)
+        self.debug = True if "debug" in args else False
+        self.build_helper.build(self.debug)

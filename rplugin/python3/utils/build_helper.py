@@ -209,7 +209,7 @@ class BuildHelper:
         error: Optional[str] = None
         try:
             result = self.common_utils.run_subprocess(
-                [f"{str(self.build_tool_path)}", "build", "-x", "test"]
+                [f"{str(self.build_tool_path)}", "clean", "build", "-x", "test"]
             )
             output = " ".join(result.stdout.splitlines())
             error = " ".join(result.stderr.splitlines())
@@ -228,6 +228,12 @@ class BuildHelper:
             self.logging.echomsg(error_msg)
             self.logging.log(error_msg, LogLevel.ERROR)
             raise ValueError(error_msg)
+
+    def build(self, debug: bool = False) -> None:
+        if self.build_tool_type == "gradle":
+            self.gradle_build()
+        else:
+            self.maven_build()
 
     def run(self, debug: bool = False) -> None:
         if self.build_tool_type == "gradle":
